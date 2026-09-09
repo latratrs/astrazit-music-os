@@ -16,16 +16,18 @@ Activate this skill when:
 - Associating lyrics, cover art, and stem assets with catalog entities.
 
 ## 3. Constraints
-- **Immutable Identity**: Internal IDs (e.g., `AST-WRK-000001`, `AST-REC-000001`, `AST-REL-000001`) must never be modified or reassigned once allocated.
-- **Adapters vs. Identity**: DSP IDs (Spotify, Apple, YouTube) and standard codes (ISRC, UPC) are external adapters, never the primary key.
+- **Immutable Identity**: Internal IDs (e.g., `AST-WRK-000001`, `AST-REC-000001`, `AST-REL-000001`) must never be modified, reassigned, or recycled once allocated.
+- **Independent Monotonic Counters**: Namespaces (`WORK`, `RECORDING`, `RELEASE`) increment independently from `000001` through `999999`. Values above `999999` fail closed with `SequenceExhaustedError`.
+- **Adapters vs. Identity**: DSP IDs (Spotify, Apple, YouTube) and standard codes (ISRC, UPC) are external adapters, never the primary key and never inputs to ID allocation.
 - **Provisional Staging**: AI-generated tags and metadata must never be directly committed to the canonical catalog without human gatekeeping.
-- **Zero Schema Fabrication**: Schema implementation belongs to ticket `OS-003`; do not invent schema fields prematurely.
+- **Deterministic Allocation**: Use `packages.catalog.IdentifierAllocator` with a durable `SequenceStore`. Never manually fabricate or synthesize AST identifiers.
 
 ## 4. Authoritative References
 - [PROJECT.md](file:///c:/AI-PROJECTS/astrazit-music-os/PROJECT.md)
-- [DECISIONS.md - ADR-001, ADR-003, ADR-012, ADR-013](file:///c:/AI-PROJECTS/astrazit-music-os/DECISIONS.md)
+- [DECISIONS.md - ADR-001, ADR-003, ADR-012, ADR-013, ADR-014](file:///c:/AI-PROJECTS/astrazit-music-os/DECISIONS.md)
 - [CATALOG_SCHEMA.md](file:///c:/AI-PROJECTS/astrazit-music-os/docs/architecture/CATALOG_SCHEMA.md)
+- [IDENTIFIER_ALLOCATION.md](file:///c:/AI-PROJECTS/astrazit-music-os/docs/architecture/IDENTIFIER_ALLOCATION.md)
+- [packages/catalog/identifiers.py](file:///c:/AI-PROJECTS/astrazit-music-os/packages/catalog/identifiers.py)
 - [packages/schemas/work.schema.json](file:///c:/AI-PROJECTS/astrazit-music-os/packages/schemas/work.schema.json)
 - [packages/schemas/recording.schema.json](file:///c:/AI-PROJECTS/astrazit-music-os/packages/schemas/recording.schema.json)
 - [packages/schemas/release.schema.json](file:///c:/AI-PROJECTS/astrazit-music-os/packages/schemas/release.schema.json)
-- TODO: AST ID Allocator documentation (to be created in OS-004)

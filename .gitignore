@@ -117,3 +117,10 @@ desktop.ini
 *.liq.log
 stream_dump/
 hls_segments/
+
+# Local allocator state: use this directory for custom state filenames.
+.local/allocator/
+catalog_sequences.json
+catalog_sequences.json.lock
+catalog_sequences.json.initialized
+.ast_seq_tmp_*

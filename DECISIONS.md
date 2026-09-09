@@ -137,3 +137,19 @@ This ADR supersedes the illustrative untyped ID notation in ADR-003/ADR-004; the
 - **Context**: Music OS requires strict legal gating before publishing new works, but must also immediately catalog approximately 120 pre-existing AstraZit songs already live across DSPs without falsely certifying that full split sheet audits are complete.
 - **Decision**: Introduce an explicit `catalog_origin` discriminator (`NATIVE` vs. `HISTORICAL_IMPORT`). For `NATIVE` works and recordings, transitioning to `RELEASE_READY` or `RELEASED` strictly requires `APPROVED` rights with human audit credentials. For `HISTORICAL_IMPORT` entities, records may reflect existing `RELEASED` status while internal rights review remains `PENDING_HUMAN_APPROVAL`. Historical imports must never silently promote rights to `APPROVED`.
 - **Consequences**: Enables immediate ingestion of legacy catalog while strictly enforcing human rights approval gates on all future native releases.
+
+---
+
+## ADR-014: Deterministic AST Identifier Allocator & Replaceable SequenceStore Boundary
+
+- **Status**: Accepted
+- **Date**: 2026-09-09
+- **Context**: Ticket OS-004 requires a deterministic allocation service for the three canonical entity namespaces (`AST-WRK-`, `AST-REC-`, `AST-REL-`). Allocation must be strictly monotonic, independent across namespaces, non-recycling, and crash-resilient without choosing or provisioning the final production database prematurely.
+- **Decision**: Establish an immutable internal identifier allocator architecture:
+  1. Namespaces are strictly partitioned: `AST-WRK-000001` through `AST-WRK-999999`, `AST-REC-000001` through `AST-REC-999999`, and `AST-REL-000001` through `AST-REL-999999`.
+  2. Numbers are 6 zero-padded decimal digits; `000000` is forbidden, and numbers $\ge 1000000$ trigger fail-closed exhaustion.
+  3. External codes (ISRC, ISWC, UPC, DSP IDs) remain adapters and must never influence internal allocation.
+  4. The allocator domain logic decouples from physical storage via an abstract `SequenceStore` interface (`get_sequence`, `get_next_sequence`).
+  5. For OS-004 local contract verification, implement `LocalJsonSequenceStore` utilizing an atomic replace write strategy (`os.replace` + `fsync`), fail-closed strict JSON parsing (forbidding floats, bools, NaN, Infinity, duplicate keys), and advisory file locking (`msvcrt` on Windows / `fcntl` on POSIX).
+  6. OS-004 explicitly documents that this local store provides single-host process and thread safety, but is NOT a distributed multi-host production allocator. Final production database selection is deferred to future tickets.
+- **Consequences**: Allocator contract is fully operational and testable today with zero external infrastructure dependencies or cloud provisioning. Downstream callers can transition to a future production database store seamlessly without altering allocator domain logic.

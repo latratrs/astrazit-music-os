@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_recording_id": "AST-REC-000005",
+  "astrazit_work_id": "AST-WRK-000001",
+  "recording_title": "Fictional Solar Wind",
+  "version": "Radio Edit",
+  "artist": "AstraZit",
+  "catalog_origin": "NATIVE",
+  "lifecycle_status": "RELEASE_READY",
+  "music": {
+    "duration_seconds": 182.0,
+    "bpm": 124.0,
+    "key": "D",
+    "scale": "MAJOR",
+    "genre": "Synthwave",
+    "moods": [
+      "Uplifting",
+      "Driving"
+    ],
+    "energy": 0.85,
+    "vocal_characteristics": {
+      "has_vocals": false,
+      "vocal_type": "INSTRUMENTAL"
+    },
+    "language": "zxx"
+  },
+  "assets": [
+    {
+      "asset_id": "ast-asset-000005-stream",
+      "asset_type": "STREAM_DERIVATIVE",
+      "uri": "gs://astrazit-radio-transcodes/AST-REC-000005/solar_wind_radio_edit_320k.mp3",
+      "mime_type": "audio/mpeg"
+    }
+  ],
+  "master_rights": {
+    "copyright_notice_sound_recording": "(P) 2026 AstraZit Music LLC",
+    "isrc": "USXYZ2600005",
+    "owners": [
+      {
+        "name": "AstraZit Music LLC",
+        "percentage": 100
+      }
+    ],
+    "approval_status": "APPROVED",
+    "approved_by": "fictional-master-rights-reviewer",
+    "approved_at": "2026-09-08T12:00:00Z"
+  },
+  "radio": {
+    "radio_eligible": true,
+    "eligibility_status": "APPROVED",
+    "rotation_tier": "HEAVY",
+    "daypart_candidates": [
+      "MORNING",
+      "DRIVE_TIME"
+    ],
+    "mood_tags": [
+      "HighEnergy",
+      "Commute",
+      "Bright"
+    ],
+    "energy_rating": 0.85,
+    "intro_duration_seconds": 8.0,
+    "outro_duration_seconds": 10.0,
+    "programming_notes": "Ideal for morning drive-time boost."
+  },
+  "provenance": {
+    "source": "HUMAN_ENTERED",
+    "source_system": "radio_curation_desk",
+    "generated_at": "2026-09-02T11:00:00Z",
+    "approval_status": "APPROVED",
+    "approver": "fictional-station-curator",
+    "approved_at": "2026-09-02T11:00:00Z",
+    "version": 1,
+    "canonical_status": "MASTER_METADATA",
+    "notes": " Fictional fixture only: no real ownership, approvals, catalog allocations, or assets are asserted."
+  }
+}

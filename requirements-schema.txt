@@ -1,0 +1,12 @@
+# Exact audit-environment snapshot (including transitive pins), intentionally lock-style.
+# Python 3.14.3 verified; no runtime/framework dependencies.
+# Direct: jsonschema, referencing, rfc3339-validator, rfc3986-validator.
+# Remaining packages pin their dependency closure for reproducible validation.
+jsonschema==4.26.0
+referencing==0.37.0
+attrs==26.1.0
+jsonschema-specifications==2025.9.1
+rpds-py==2026.6.3
+rfc3339-validator==0.1.4
+rfc3986-validator==0.1.1
+six==1.17.0

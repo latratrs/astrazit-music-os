@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/metadata-provenance.schema.json",
+  "title": "AstraZit Metadata Provenance Schema",
+  "description": "Defines origin, source system, and human verification status for metadata records and enriched fields in AstraZit Music OS.",
+  "type": "object",
+  "required": [
+    "source",
+    "generated_at",
+    "approval_status",
+    "source_system",
+    "version",
+    "canonical_status"
+  ],
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": [
+        "AI_GENERATED",
+        "HUMAN_ENTERED",
+        "IMPORTED",
+        "DETERMINISTICALLY_DERIVED"
+      ],
+      "description": "Original creation/import origin; never replace this on approval or promotion."
+    },
+    "source_system": {
+      "type": "string",
+      "description": "Specific model, tool, script, platform, or human responsible for data creation (e.g., 'gemini-1.5-pro', 'distrokid_csv_ingest', 'daw_export').",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when this data was created or generated."
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "REJECTED"
+      ],
+      "description": "Human gatekeeper verification status."
+    },
+    "approver": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Identity or username of the human gatekeeper who reviewed the data. Required if approval_status is APPROVED."
+    },
+    "approved_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when human verification occurred."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Revision number of this metadata entry."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional commentary, prompt details, or audit notes."
+    },
+    "canonical_status": {
+      "type": "string",
+      "enum": [
+        "PROVISIONAL",
+        "MASTER_METADATA"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "provenance_wrapper": {
+      "type": "object",
+      "required": [
+        "value",
+        "provenance"
+      ],
+      "properties": {
+        "value": {
+          "description": "The actual value of the field (string, array, object, number, or boolean)."
+        },
+        "provenance": {
+          "$ref": "#"
+        }
+      },
+      "additionalProperties": false
+    },
+    "historical_import": {
+      "type": "object",
+      "required": [
+        "first_released_at",
+        "imported_at",
+        "source_reference",
+        "rights_review_required"
+      ],
+      "properties": {
+        "first_released_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Evidence date of pre-existing public release, not a planned future release."
+        },
+        "imported_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_reference": {
+          "type": "string",
+          "format": "uri",
+          "description": "Reference to evidence of the existing release; not fetched by the validator."
+        },
+        "rights_review_required": {
+          "type": "boolean",
+          "description": "Derived review debt across applicable composition/master rights, checked by catalog validation."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "approval_status": {
+            "const": "APPROVED"
+          }
+        },
+        "required": [
+          "approval_status"
+        ]
+      },
+      "then": {
+        "required": [
+          "approver",
+          "approved_at"
+        ],
+        "properties": {
+          "approver": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "approved_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "canonical_status": {
+            "const": "MASTER_METADATA"
+          }
+        },
+        "required": [
+          "canonical_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "approval_status": {
+            "const": "APPROVED"
+          }
+        }
+      }
+    }
+  ]
+}

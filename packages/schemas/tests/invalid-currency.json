@@ -1,0 +1,12 @@
+{
+  "source_platform": "Spotify",
+  "royalty_type": "STREAMING_MECHANICAL",
+  "period_start": "2026-08-01",
+  "period_end": "2026-08-31",
+  "amount": 45.2,
+  "currency": "USDOLLARS",
+  "payment_status": "PAID",
+  "notes": "Fictional negative fixture.",
+  "entity_type": "RECORDING",
+  "entity_id": "AST-REC-000006"
+}

@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/release.schema.json",
+  "title": "AstraZit Release Schema",
+  "description": "The canonical data contract representing a commercial release or product container (Single, EP, Album, Compilation) in AstraZit Music OS.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "astrazit_release_id",
+    "title",
+    "release_type",
+    "catalog_origin",
+    "lifecycle_status",
+    "tracklist",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the release schema (e.g. 1.0.0)."
+    },
+    "astrazit_release_id": {
+      "type": "string",
+      "pattern": "^AST-REL-[0-9]{6}$",
+      "description": "Immutable internal AstraZit release identifier (e.g., AST-REL-000001).",
+      "minLength": 14,
+      "maxLength": 14
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical title of the release product."
+    },
+    "artist": {
+      "type": "string",
+      "default": "AstraZit",
+      "description": "Primary artist credit for the release."
+    },
+    "release_type": {
+      "type": "string",
+      "enum": [
+        "SINGLE",
+        "EP",
+        "ALBUM",
+        "COMPILATION",
+        "OTHER"
+      ],
+      "description": "Product configuration of the release."
+    },
+    "catalog_origin": {
+      "type": "string",
+      "enum": [
+        "NATIVE",
+        "HISTORICAL_IMPORT"
+      ],
+      "description": "Distinguishes native Music OS releases from historical pre-existing catalog releases."
+    },
+    "lifecycle_status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "VALIDATED",
+        "METADATA_REVIEW",
+        "RELEASE_READY",
+        "RELEASED",
+        "ARCHIVED"
+      ],
+      "description": "Release product lifecycle status."
+    },
+    "release_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Commercial public release date (YYYY-MM-DD)."
+    },
+    "upc": {
+      "type": "string",
+      "pattern": "^[0-9]{12,13}$",
+      "description": "Universal Product Code for the commercial package."
+    },
+    "tracklist": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "track_number",
+          "astrazit_recording_id"
+        ],
+        "properties": {
+          "track_number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "disc_number": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          },
+          "astrazit_recording_id": {
+            "type": "string",
+            "pattern": "^AST-REC-[0-9]{6}$",
+            "description": "Reference to canonical sound recording record.",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Ordered collection of recordings comprising the release. Release owns track sequence."
+    },
+    "artwork": {
+      "type": "array",
+      "items": {
+        "$ref": "asset-reference.schema.json"
+      },
+      "description": "Release-level cover artwork and packaging assets."
+    },
+    "distribution": {
+      "type": "array",
+      "items": {
+        "$ref": "distribution-record.schema.json"
+      },
+      "description": "Package-level distribution adapter records."
+    },
+    "provenance": {
+      "$ref": "metadata-provenance.schema.json"
+    },
+    "historical_import": {
+      "$ref": "metadata-provenance.schema.json#/$defs/historical_import"
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "catalog_origin": {
+            "const": "HISTORICAL_IMPORT"
+          }
+        },
+        "required": [
+          "catalog_origin"
+        ]
+      },
+      "then": {
+        "required": [
+          "historical_import"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "historical_import"
+          ]
+        }
+      }
+    }
+  ]
+}

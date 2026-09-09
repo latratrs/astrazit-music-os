@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_recording_id": "AST-REC-000007",
+  "astrazit_work_id": "AST-WRK-000001",
+  "recording_title": "Recording With Bad Enum",
+  "version": "Original Mix",
+  "artist": "AstraZit",
+  "catalog_origin": "NATIVE",
+  "lifecycle_status": "SUPER_RELEASED",
+  "music": {
+    "duration_seconds": 150.0
+  },
+  "master_rights": {
+    "owners": [
+      {
+        "name": "AstraZit Music",
+        "percentage": 100
+      }
+    ],
+    "approval_status": "PENDING_HUMAN_APPROVAL"
+  },
+  "provenance": {
+    "source": "HUMAN_ENTERED",
+    "source_system": "fictional_fixture",
+    "generated_at": "2026-09-08T10:00:00Z",
+    "approval_status": "PENDING_APPROVAL",
+    "version": 1,
+    "canonical_status": "PROVISIONAL"
+  }
+}

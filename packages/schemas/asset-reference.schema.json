@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/asset-reference.schema.json",
+  "title": "AstraZit Asset Reference Schema",
+  "description": "Defines canonical references, storage URIs, format specifications, and checksums for audio, project, artwork, and derivative assets.",
+  "type": "object",
+  "required": [
+    "asset_id",
+    "asset_type",
+    "uri"
+  ],
+  "properties": {
+    "asset_id": {
+      "type": "string",
+      "description": "Unique identifier for the asset reference.",
+      "minLength": 1
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "MASTER_WAV",
+        "MASTER_AUDIO",
+        "STREAM_DERIVATIVE",
+        "DAW_PROJECT",
+        "SOURCE_RECORDING",
+        "LYRICS_FILE",
+        "COVER_ART",
+        "PROMO_ART",
+        "CONTENT_DERIVATIVE",
+        "STEM_PACKAGE",
+        "OTHER"
+      ],
+      "description": "Functional classification of the asset."
+    },
+    "uri": {
+      "type": "string",
+      "description": "Absolute storage-provider-independent URI (https:, gs:, s3:, file:, etc.). No embedded data URI or ambiguous relative path.",
+      "format": "uri",
+      "pattern": "^(?![Dd][Aa][Tt][Aa]:)"
+    },
+    "mime_type": {
+      "type": "string",
+      "description": "Standard MIME type (e.g., 'audio/wav', 'audio/flac', 'image/png', 'application/json')."
+    },
+    "checksum_sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$",
+      "description": "SHA-256 cryptographic hash of the asset binary."
+    },
+    "size_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Exact file size in bytes."
+    },
+    "format_details": {
+      "type": "object",
+      "properties": {
+        "sample_rate_hz": {
+          "type": "integer",
+          "description": "Audio sample rate in Hertz (e.g., 44100, 48000, 96000).",
+          "minimum": 1
+        },
+        "bit_depth": {
+          "type": "integer",
+          "description": "Audio bit depth (e.g., 16, 24, 32).",
+          "minimum": 1
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Audio channel count (e.g., 1=mono, 2=stereo)."
+        },
+        "width_px": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Image or video width in pixels."
+        },
+        "height_px": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Image or video height in pixels."
+        }
+      },
+      "additionalProperties": false
+    },
+    "notes": {
+      "type": "string",
+      "description": "Operational commentary regarding mastering, render settings, or lineage."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when this asset was generated or cataloged."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Asset reference revision; a different binary must retain a distinct asset identity or revision."
+    },
+    "derived_from_asset_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Parent asset identity for derivative lineage; referential integrity is checked by future catalog services."
+    }
+  },
+  "additionalProperties": false
+}

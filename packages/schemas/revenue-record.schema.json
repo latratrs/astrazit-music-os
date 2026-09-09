@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/revenue-record.schema.json",
+  "title": "AstraZit Revenue Record Schema",
+  "description": "Platform-independent royalty and statement ledger record for tracking financial streams across DSPs, PROs, and direct sales.",
+  "type": "object",
+  "required": [
+    "source_platform",
+    "royalty_type",
+    "period_start",
+    "period_end",
+    "amount",
+    "currency",
+    "payment_status",
+    "entity_type",
+    "entity_id"
+  ],
+  "properties": {
+    "source_platform": {
+      "type": "string",
+      "description": "Reporting entity or platform (e.g., 'Spotify', 'Apple Music', 'YouTube Content ID', 'ASCAP', 'The MLC', 'SoundExchange', 'DistroKid')."
+    },
+    "royalty_type": {
+      "type": "string",
+      "enum": [
+        "STREAMING_MECHANICAL",
+        "PERFORMANCE",
+        "SYNCHRONIZATION",
+        "MASTER_STREAMING",
+        "DIRECT_SALE",
+        "AD_REVENUE",
+        "OTHER"
+      ],
+      "description": "Classification of royalty stream."
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Start date of earnings period (YYYY-MM-DD)."
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "End date of earnings period (YYYY-MM-DD)."
+    },
+    "amount": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Monetary value."
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "Three-uppercase-letter currency-code shape only; not validated against ISO 4217 membership.",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "ESTIMATED",
+        "ACCRUED",
+        "PAID",
+        "DISPUTED"
+      ],
+      "description": "Disbursement lifecycle state."
+    },
+    "statement_id": {
+      "type": "string",
+      "description": "Distributor/PRO statement reference or invoice number."
+    },
+    "paid_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of payout clearance."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Audit notes or exchange rate documentation."
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "WORK",
+        "RECORDING",
+        "RELEASE"
+      ]
+    },
+    "entity_id": {
+      "type": "string",
+      "minLength": 14,
+      "maxLength": 14,
+      "description": "Exactly one canonical attribution target. Separate allocations require separate ledger records; never multiply the amount by duplicating targets."
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "entity_type": {
+            "const": "WORK"
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_id": {
+            "pattern": "^AST-WRK-[0-9]{6}$",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "entity_type": {
+            "const": "RECORDING"
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_id": {
+            "pattern": "^AST-REC-[0-9]{6}$",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "entity_type": {
+            "const": "RELEASE"
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_id": {
+            "pattern": "^AST-REL-[0-9]{6}$",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        }
+      }
+    }
+  ]
+}

@@ -37,7 +37,7 @@ $$\text{DATABASE} = \text{truth} \quad\vert\quad \text{CODE} = \text{execution} 
    All applications and services must read from and write to the central Music OS catalog. AI-generated metadata must **never** silently become canonical metadata. AI proposals exist in provisional staging until explicitly approved and promoted by human review.
 
 2. **Immutable Identity Principle**
-   External platform identifiers are **adapters**, not identity. Every AstraZit song receives an internal, immutable identifier (e.g., `AST-000001`). Third-party IDs—including DistroKid IDs, ISRCs, UPCs, Spotify IDs, Apple Music IDs, and YouTube video IDs—are platform-specific foreign keys subject to deprecation, migration, or collision. They must never replace or define the core AstraZit identity.
+   External platform identifiers are **adapters**, not identity. Musical Works, Sound Recordings, and Releases receive separate immutable identifiers (`AST-WRK-000001`, `AST-REC-000001`, `AST-REL-000001`) under ADR-012. Third-party IDs—including DistroKid IDs, ISRCs, UPCs, Spotify IDs, Apple Music IDs, and YouTube video IDs—are platform-specific foreign keys subject to deprecation, migration, or collision. They must never replace or define the core AstraZit identity.
 
 3. **Deterministic-Code Principle**
    Critical operations—including catalog transformations, database migrations, and audio playback—must execute deterministically. No LLM or external AI API call may ever be placed in a live broadcast song-change hot path without an explicit future architectural decision.

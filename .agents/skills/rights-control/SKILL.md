@@ -24,6 +24,7 @@ Activate this skill when:
 ## 4. Authoritative References
 - [PROJECT.md](file:///c:/AI-PROJECTS/astrazit-music-os/PROJECT.md)
 - [AGENTS.md - Human Approval Gates](file:///c:/AI-PROJECTS/astrazit-music-os/AGENTS.md)
-- [DECISIONS.md - ADR-007](file:///c:/AI-PROJECTS/astrazit-music-os/DECISIONS.md)
-- TODO: Rights Data Schema Specification (`docs/rights/` - to be established)
+- [DECISIONS.md - ADR-007 & ADR-011](file:///c:/AI-PROJECTS/astrazit-music-os/DECISIONS.md)
+- [packages/schemas/rights.schema.json](file:///c:/AI-PROJECTS/astrazit-music-os/packages/schemas/rights.schema.json)
+- [CATALOG_SCHEMA.md](file:///c:/AI-PROJECTS/astrazit-music-os/docs/architecture/CATALOG_SCHEMA.md)
 - TODO: Content ID Allowlist Registry (`docs/rights/content-id.md` - to be established)

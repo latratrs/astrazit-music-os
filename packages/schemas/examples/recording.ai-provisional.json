@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_recording_id": "AST-REC-000006",
+  "astrazit_work_id": "AST-WRK-000001",
+  "recording_title": "Fictional Quantum Echoes",
+  "version": "Original Mix",
+  "artist": "AstraZit",
+  "catalog_origin": "NATIVE",
+  "lifecycle_status": "METADATA_REVIEW",
+  "music": {
+    "duration_seconds": 245.0,
+    "bpm": 95.0,
+    "key": "E",
+    "scale": "MINOR",
+    "genre": "Ambient",
+    "moods": [
+      "Atmospheric",
+      "Meditative"
+    ],
+    "energy": 0.35,
+    "language": "zxx"
+  },
+  "master_rights": {
+    "copyright_notice_sound_recording": "(P) 2026 AstraZit Music LLC",
+    "isrc": "USXYZ2600006",
+    "owners": [
+      {
+        "name": "AstraZit Music LLC",
+        "percentage": 100
+      }
+    ],
+    "approval_status": "PENDING_HUMAN_APPROVAL"
+  },
+  "provenance": {
+    "source": "HUMAN_ENTERED",
+    "source_system": "daw_session_export",
+    "generated_at": "2026-09-08T09:00:00Z",
+    "approval_status": "APPROVED",
+    "approver": "fictional-studio-engineer",
+    "approved_at": "2026-09-08T09:30:00Z",
+    "version": 1,
+    "canonical_status": "MASTER_METADATA",
+    "notes": " Fictional fixture only: no real ownership, approvals, catalog allocations, or assets are asserted."
+  },
+  "provisional_enrichments": {
+    "suggested_tags": {
+      "value": [
+        "SpaceAmbient",
+        "DeepFocus",
+        "CyberpunkStudy"
+      ],
+      "provenance": {
+        "source": "AI_GENERATED",
+        "source_system": "gemini-1.5-pro",
+        "generated_at": "2026-09-08T09:05:00Z",
+        "approval_status": "PENDING_APPROVAL",
+        "version": 1,
+        "canonical_status": "PROVISIONAL",
+        "notes": "Generated from acoustic feature analysis."
+      }
+    },
+    "suggested_description": {
+      "value": "An expansive ambient soundscape designed for deep focus.",
+      "provenance": {
+        "source": "AI_GENERATED",
+        "source_system": "gemini-1.5-pro",
+        "generated_at": "2026-09-08T09:05:00Z",
+        "approval_status": "PENDING_APPROVAL",
+        "version": 1,
+        "canonical_status": "PROVISIONAL"
+      }
+    }
+  },
+  "metadata_provenance": {
+    "/music/moods": {
+      "source": "AI_GENERATED",
+      "source_system": "gemini-1.5-pro",
+      "generated_at": "2026-09-08T09:05:00Z",
+      "approval_status": "APPROVED",
+      "approver": "fictional-human-curator",
+      "approved_at": "2026-09-08T10:00:00Z",
+      "version": 1,
+      "canonical_status": "MASTER_METADATA",
+      "notes": "AI suggested mood promoted by curator into canonical metadata."
+    }
+  }
+}

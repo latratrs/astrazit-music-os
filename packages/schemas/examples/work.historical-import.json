@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_work_id": "AST-WRK-000003",
+  "canonical_title": "Fictional Vintage Echoes",
+  "catalog_origin": "HISTORICAL_IMPORT",
+  "lifecycle_status": "ACTIVE",
+  "composition_rights": {
+    "approval_status": "PENDING_HUMAN_APPROVAL",
+    "copyright_notice_composition": "(C) 2024 AstraZit",
+    "writers": [
+      {
+        "name": "Fictional Legacy Writer",
+        "role": "AUTHOR_COMPOSER",
+        "percentage": 100.0,
+        "pro": "ASCAP"
+      }
+    ],
+    "publishers": [
+      {
+        "name": "Legacy Publishing Admin",
+        "role": "PUBLISHER",
+        "percentage": 100.0,
+        "pro": "ASCAP"
+      }
+    ],
+    "notes": "Imported from 2024 legacy distributor CSV. Full split sheet contract pending human legal verification."
+  },
+  "provenance": {
+    "source": "IMPORTED",
+    "source_system": "legacy_distributor_csv_ingest",
+    "generated_at": "2024-05-01T00:00:00Z",
+    "approval_status": "PENDING_APPROVAL",
+    "version": 1,
+    "canonical_status": "PROVISIONAL",
+    "notes": "Historical pre-Music OS work imported into catalog. Fictional fixture only: no real ownership, approvals, catalog allocations, or assets are asserted."
+  },
+  "historical_import": {
+    "first_released_at": "2024-05-01T00:00:00Z",
+    "imported_at": "2026-09-08T10:00:00Z",
+    "source_reference": "https://example.invalid/legacy-release-evidence",
+    "rights_review_required": true
+  }
+}

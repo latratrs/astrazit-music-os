@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_release_id": "AST-REL-BAD",
+  "title": "Release With Malformed ID",
+  "release_type": "SINGLE",
+  "catalog_origin": "NATIVE",
+  "lifecycle_status": "DRAFT",
+  "tracklist": [
+    {
+      "track_number": 1,
+      "astrazit_recording_id": "AST-REC-000001"
+    }
+  ],
+  "provenance": {
+    "source": "HUMAN_ENTERED",
+    "source_system": "fictional_fixture",
+    "generated_at": "2026-09-08T10:00:00Z",
+    "approval_status": "PENDING_APPROVAL",
+    "version": 1,
+    "canonical_status": "PROVISIONAL"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/distribution-record.schema.json",
+  "title": "AstraZit Distribution Record Schema",
+  "description": "Platform adapter record representing release and distribution state across digital service providers and aggregators (DistroKid, SoundOn, Ditto, etc.).",
+  "type": "object",
+  "required": [
+    "provider",
+    "status"
+  ],
+  "properties": {
+    "provider": {
+      "type": "string",
+      "description": "Stable lowercase provider namespace. Each array entry can represent a separate delivery; multiple entries per provider are allowed.",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "external_release_id": {
+      "type": "string",
+      "description": "Distributor release or package ID."
+    },
+    "external_track_id": {
+      "type": "string",
+      "description": "Distributor track-level identifier."
+    },
+    "upc_reference": {
+      "type": "string",
+      "pattern": "^[0-9]{12,13}$",
+      "description": "Distributor-assigned UPC for the package."
+    },
+    "isrc_reference": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$",
+      "description": "Distributor-associated ISRC."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "SUBMITTED",
+        "PROCESSING",
+        "LIVE",
+        "REJECTED",
+        "TAKEDOWN_REQUESTED",
+        "TAKEDOWN_COMPLETE"
+      ],
+      "description": "Current lifecycle status on this distribution channel."
+    },
+    "urls": {
+      "type": "object",
+      "properties": {
+        "spotify": {
+          "type": "string",
+          "format": "uri"
+        },
+        "apple_music": {
+          "type": "string",
+          "format": "uri"
+        },
+        "youtube_music": {
+          "type": "string",
+          "format": "uri"
+        },
+        "amazon_music": {
+          "type": "string",
+          "format": "uri"
+        },
+        "tidal": {
+          "type": "string",
+          "format": "uri"
+        },
+        "deezer": {
+          "type": "string",
+          "format": "uri"
+        },
+        "tiktok_audio": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": {
+        "type": "string",
+        "format": "uri"
+      },
+      "description": "Direct URLs to store and streaming pages."
+    },
+    "submitted_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of submission to distributor."
+    },
+    "live_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when track became publicly live."
+    },
+    "takedown_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp if takedown occurred."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Distribution operational notes, delivery issues, or store exclusions."
+    }
+  },
+  "additionalProperties": false
+}

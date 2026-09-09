@@ -30,7 +30,7 @@
 
 ## Technical Approach & Architecture Constraints
 - **Canonical Model Alignment**: [How does this work interact with the canonical database?]
-- **Identity Handling**: [Verify compliance with immutable internal ID principles (AST-XXXXXX).]
+- **Identity Handling**: [Verify compliance with immutable internal ID principles (AST-WRK-XXXXXX / AST-REC-XXXXXX / AST-REL-XXXXXX).]
 - **Hot Path Safety**: [Confirm zero synchronous AI calls in live broadcast hot paths.]
 - **Cross-Platform Compatibility**: [Specify Linux VPS vs. Windows dev requirements.]
 

@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_recording_id": "AST-REC-000001",
+  "astrazit_work_id": "AST-WRK-000001",
+  "recording_title": "Fictional Horizon",
+  "version": "Original Mix",
+  "artist": "AstraZit",
+  "catalog_origin": "NATIVE",
+  "lifecycle_status": "RELEASE_READY",
+  "music": {
+    "duration_seconds": 195.0,
+    "bpm": 120.0,
+    "key": "A",
+    "scale": "MINOR",
+    "genre": "Synthwave",
+    "subgenres": [
+      "Retrowave",
+      "Downtempo"
+    ],
+    "moods": [
+      "Nocturnal",
+      "Dreamy"
+    ],
+    "energy": 0.65,
+    "language": "en"
+  },
+  "assets": [
+    {
+      "asset_id": "asset-rec-000001-master",
+      "asset_type": "MASTER_WAV",
+      "uri": "gs://astrazit-catalog-masters/AST-REC-000001/Fictional_Horizon_Master.wav",
+      "mime_type": "audio/wav",
+      "checksum_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 56000000,
+      "format_details": {
+        "sample_rate_hz": 48000,
+        "bit_depth": 24,
+        "channels": 2
+      },
+      "created_at": "2026-09-08T11:00:00Z"
+    }
+  ],
+  "master_rights": {
+    "copyright_notice_sound_recording": "(P) 2026 AstraZit Music LLC",
+    "isrc": "USXYZ2600001",
+    "soundexchange_status": {
+      "status": "REGISTERED",
+      "recording_id": "SX-000001",
+      "registered_at": "2026-09-08T12:45:00Z"
+    },
+    "content_id": {
+      "status": "ACTIVE_MONETIZE",
+      "policy": "MONETIZE",
+      "allowlist_channels": [
+        "UC_AstraZitOfficial"
+      ]
+    },
+    "owners": [
+      {
+        "name": "AstraZit Music LLC",
+        "percentage": 100
+      }
+    ],
+    "approval_status": "APPROVED",
+    "approved_by": "fictional-master-rights-reviewer",
+    "approved_at": "2026-09-08T12:00:00Z"
+  },
+  "provenance": {
+    "source": "HUMAN_ENTERED",
+    "source_system": "daw_master_export",
+    "generated_at": "2026-09-08T11:00:00Z",
+    "approval_status": "APPROVED",
+    "approver": "fictional-audio-engineer",
+    "approved_at": "2026-09-08T11:30:00Z",
+    "version": 1,
+    "canonical_status": "MASTER_METADATA",
+    "notes": " Fictional fixture only: no real ownership, approvals, catalog allocations, or assets are asserted."
+  }
+}

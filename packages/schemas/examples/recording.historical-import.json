@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_recording_id": "AST-REC-000004",
+  "astrazit_work_id": "AST-WRK-000003",
+  "recording_title": "Fictional Vintage Echoes",
+  "version": "Original Mix",
+  "artist": "AstraZit",
+  "catalog_origin": "HISTORICAL_IMPORT",
+  "lifecycle_status": "RELEASED",
+  "music": {
+    "duration_seconds": 210.0,
+    "bpm": 110.0,
+    "key": "E",
+    "scale": "MINOR",
+    "genre": "Synthwave",
+    "language": "en"
+  },
+  "master_rights": {
+    "copyright_notice_sound_recording": "(P) 2024 AstraZit",
+    "isrc": "USXYZ2400004",
+    "owners": [
+      {
+        "name": "AstraZit Legacy Catalog",
+        "percentage": 100
+      }
+    ],
+    "approval_status": "PENDING_HUMAN_APPROVAL"
+  },
+  "distribution": [
+    {
+      "provider": "distrokid",
+      "external_release_id": "DK-LEGACY-004",
+      "status": "LIVE",
+      "urls": {
+        "spotify": "https://open.spotify.com/track/fictionalHistorical004"
+      }
+    }
+  ],
+  "provenance": {
+    "source": "IMPORTED",
+    "source_system": "legacy_distributor_csv_ingest",
+    "generated_at": "2024-05-01T00:00:00Z",
+    "approval_status": "PENDING_APPROVAL",
+    "version": 1,
+    "canonical_status": "PROVISIONAL",
+    "notes": "Historically released in 2024 prior to Music OS. Master rights and composition splits awaiting human audit. Fictional fixture only: no real ownership, approvals, catalog allocations, or assets are asserted."
+  },
+  "historical_import": {
+    "first_released_at": "2024-05-01T00:00:00Z",
+    "imported_at": "2026-09-08T10:00:00Z",
+    "source_reference": "https://example.invalid/legacy-release-evidence",
+    "rights_review_required": true
+  }
+}

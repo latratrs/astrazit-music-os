@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/rights.schema.json",
+  "title": "AstraZit Work Composition Rights Schema",
+  "description": "Defines canonical copyright ownership, writer/publisher split sheets, and PRO registrations for the underlying musical work.",
+  "type": "object",
+  "required": [
+    "writers",
+    "publishers",
+    "approval_status"
+  ],
+  "properties": {
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "PENDING_HUMAN_APPROVAL",
+        "APPROVED"
+      ],
+      "description": "Declared human approval status. Evidence is structurally required; caller authorization must be enforced by the write service."
+    },
+    "approved_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Human gatekeeper who verified split sheets and registrations."
+    },
+    "approved_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of human approval."
+    },
+    "copyright_notice_composition": {
+      "type": "string",
+      "description": "Underlying musical work copyright notice, e.g. '(C) 2026 AstraZit'."
+    },
+    "iswc": {
+      "type": "string",
+      "pattern": "^T-[0-9]{9}-[0-9]$",
+      "description": "International Standard Musical Work Code (e.g. T-123456789-0)."
+    },
+    "writers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/contributor_split"
+          },
+          {
+            "properties": {
+              "role": {
+                "enum": [
+                  "AUTHOR",
+                  "COMPOSER",
+                  "AUTHOR_COMPOSER"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "description": "Individual lyricists and melody composers with ownership percentages.",
+      "uniqueItems": true
+    },
+    "publishers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/contributor_split"
+          },
+          {
+            "properties": {
+              "role": {
+                "enum": [
+                  "PUBLISHER",
+                  "ADMINISTRATOR"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "description": "Publishing entities administering the musical work with ownership percentages.",
+      "uniqueItems": true
+    },
+    "registrations": {
+      "type": "object",
+      "properties": {
+        "mlc_status": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "$ref": "#/$defs/registration_status"
+            },
+            "song_code": {
+              "type": "string"
+            },
+            "registered_at": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            }
+          },
+          "additionalProperties": false
+        },
+        "pro_registrations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "organization",
+              "status"
+            ],
+            "properties": {
+              "organization": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Provider-neutral PRO name/code; no fixed organization list."
+              },
+              "status": {
+                "$ref": "#/$defs/registration_status"
+              },
+              "work_id": {
+                "type": "string"
+              },
+              "registered_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "notes": {
+      "type": "string",
+      "description": "Legal provenance notes, contract references, or split sheet agreements."
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "contributor_split": {
+      "type": "object",
+      "required": [
+        "name",
+        "role",
+        "percentage"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Legal name or designated entity name."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "AUTHOR",
+            "COMPOSER",
+            "AUTHOR_COMPOSER",
+            "PRODUCER",
+            "PUBLISHER",
+            "ADMINISTRATOR"
+          ]
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Split share percentage. Note: Total splits summing to 100.0% is enforced via business-rule validation."
+        },
+        "ipi_cae": {
+          "type": "string",
+          "pattern": "^[0-9]{9,11}$",
+          "description": "9 to 11 digit Interested Parties Information number."
+        },
+        "pro": {
+          "type": "string",
+          "description": "PRO affiliation (e.g., 'ASCAP', 'BMI', 'SESAC', 'PRS')."
+        }
+      },
+      "additionalProperties": false
+    },
+    "registration_status": {
+      "type": "string",
+      "enum": [
+        "UNREGISTERED",
+        "PENDING_SUBMISSION",
+        "SUBMITTED",
+        "REGISTERED",
+        "DISPUTED",
+        "NOT_APPLICABLE"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "approval_status": {
+            "const": "APPROVED"
+          }
+        },
+        "required": [
+          "approval_status"
+        ]
+      },
+      "then": {
+        "required": [
+          "approved_by",
+          "approved_at"
+        ],
+        "properties": {
+          "approved_by": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "approved_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  ]
+}

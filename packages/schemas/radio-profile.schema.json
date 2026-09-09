@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/radio-profile.schema.json",
+  "title": "AstraZit Radio Profile Schema",
+  "description": "Radio projection profile consumed by AstraZit Radio (Application #1) for rotation, daypart curation, and broadcast metadata.",
+  "type": "object",
+  "required": [
+    "radio_eligible",
+    "eligibility_status"
+  ],
+  "properties": {
+    "radio_eligible": {
+      "type": "boolean",
+      "description": "Master gate determining whether track can enter live radio playout selection."
+    },
+    "eligibility_status": {
+      "type": "string",
+      "enum": [
+        "INELIGIBLE",
+        "PENDING_CURATION",
+        "APPROVED",
+        "RESTRICTED",
+        "DEPRECATED"
+      ],
+      "description": "Detailed curation status for broadcast clearance."
+    },
+    "rotation_tier": {
+      "type": "string",
+      "description": "Opaque tier key from a future human-approved station programming profile; no vocabulary is established by OS-003.",
+      "minLength": 1
+    },
+    "daypart_candidates": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "Keys from a future approved station daypart profile; OS-003 defines no schedule or daypart vocabulary."
+    },
+    "mood_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Radio-specific vibe/mood tags (e.g., 'Chill', 'Upbeat', 'Ambient', 'Focus', 'Dreamy').",
+      "uniqueItems": true
+    },
+    "energy_rating": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Broadcast energy level from 0.0 (calm/ambient) to 1.0 (peak intensity)."
+    },
+    "intro_duration_seconds": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Duration in seconds before vocals or primary melody starts (for DJ/voiceover ducks)."
+    },
+    "outro_duration_seconds": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Duration in seconds of outro fade/tail for smooth crossfading."
+    },
+    "programming_notes": {
+      "type": "string",
+      "description": "Curator commentary, transition suggestions, or special programming context."
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "radio_eligible": {
+            "const": true
+          }
+        },
+        "required": [
+          "radio_eligible"
+        ]
+      },
+      "then": {
+        "properties": {
+          "eligibility_status": {
+            "const": "APPROVED"
+          }
+        }
+      }
+    }
+  ]
+}

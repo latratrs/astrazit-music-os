@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_work_id": "AST-WRK-000001",
+  "canonical_title": "Fictional Horizon",
+  "catalog_origin": "NATIVE",
+  "lifecycle_status": "ACTIVE",
+  "composition_rights": {
+    "approval_status": "APPROVED",
+    "approved_by": "fictional-rights-lead",
+    "approved_at": "2026-09-08T12:00:00Z",
+    "copyright_notice_composition": "(C) 2026 AstraZit Music Publishing",
+    "iswc": "T-123456789-0",
+    "writers": [
+      {
+        "name": "Fictional Lyricist",
+        "role": "AUTHOR_COMPOSER",
+        "percentage": 100.0,
+        "ipi_cae": "111222333",
+        "pro": "ASCAP"
+      }
+    ],
+    "publishers": [
+      {
+        "name": "AstraZit Publishing",
+        "role": "PUBLISHER",
+        "percentage": 100.0,
+        "ipi_cae": "444555666",
+        "pro": "ASCAP"
+      }
+    ],
+    "registrations": {
+      "mlc_status": {
+        "status": "REGISTERED",
+        "song_code": "MLC-000001",
+        "registered_at": "2026-09-08T12:30:00Z"
+      },
+      "pro_registrations": [
+        {
+          "organization": "ASCAP",
+          "status": "REGISTERED",
+          "work_id": "ASCAP-000001",
+          "registered_at": "2026-09-08T12:30:00Z"
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "source": "HUMAN_ENTERED",
+    "source_system": "catalog_admin_portal",
+    "generated_at": "2026-09-08T10:00:00Z",
+    "approval_status": "APPROVED",
+    "approver": "fictional-rights-lead",
+    "approved_at": "2026-09-08T12:00:00Z",
+    "version": 1,
+    "canonical_status": "MASTER_METADATA",
+    "notes": " Fictional fixture only: no real ownership, approvals, catalog allocations, or assets are asserted."
+  }
+}

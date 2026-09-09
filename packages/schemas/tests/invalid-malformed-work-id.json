@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_work_id": "AST-WRK-99",
+  "canonical_title": "Work With Malformed ID",
+  "catalog_origin": "NATIVE",
+  "lifecycle_status": "DRAFT",
+  "composition_rights": {
+    "approval_status": "DRAFT",
+    "writers": [
+      {
+        "name": "Author",
+        "role": "COMPOSER",
+        "percentage": 100.0
+      }
+    ],
+    "publishers": [
+      {
+        "name": "Publisher",
+        "role": "PUBLISHER",
+        "percentage": 100.0
+      }
+    ]
+  },
+  "provenance": {
+    "source": "HUMAN_ENTERED",
+    "source_system": "fictional_fixture",
+    "generated_at": "2026-09-08T10:00:00Z",
+    "approval_status": "PENDING_APPROVAL",
+    "version": 1,
+    "canonical_status": "PROVISIONAL"
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/work.schema.json",
+  "title": "AstraZit Musical Work Schema",
+  "description": "The canonical data contract representing the underlying musical composition (Work) in AstraZit Music OS.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "astrazit_work_id",
+    "canonical_title",
+    "catalog_origin",
+    "lifecycle_status",
+    "composition_rights",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the work schema (e.g. 1.0.0)."
+    },
+    "astrazit_work_id": {
+      "type": "string",
+      "pattern": "^AST-WRK-[0-9]{6}$",
+      "description": "Immutable internal AstraZit musical work identifier (e.g., AST-WRK-000001).",
+      "minLength": 14,
+      "maxLength": 14
+    },
+    "canonical_title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical title of the musical composition."
+    },
+    "catalog_origin": {
+      "type": "string",
+      "enum": [
+        "NATIVE",
+        "HISTORICAL_IMPORT"
+      ],
+      "description": "Distinguishes native Music OS-originated works from historical pre-existing catalog imports."
+    },
+    "lifecycle_status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "VALIDATED",
+        "METADATA_REVIEW",
+        "ACTIVE",
+        "ARCHIVED"
+      ],
+      "description": "Lifecycle status of the musical work composition."
+    },
+    "composition_rights": {
+      "$ref": "rights.schema.json",
+      "description": "Canonical copyright ownership, writers, publishers, split sheets, and PRO registrations."
+    },
+    "lyrics": {
+      "type": "object",
+      "properties": {
+        "has_lyrics": {
+          "type": "boolean",
+          "default": false
+        },
+        "original_lyrics": {
+          "type": "string",
+          "description": "Raw lyrics text as originally drafted or generated."
+        },
+        "final_lyrics": {
+          "type": "string",
+          "description": "Canonical verified lyrics text matching final compositions."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "NOT_APPLICABLE",
+            "DRAFT",
+            "AI_GENERATED",
+            "REVISED",
+            "HUMAN_APPROVED"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "default": "en"
+        },
+        "provenance_notes": {
+          "type": "string",
+          "description": "Origin of lyrics, prompt references, or human author credit."
+        }
+      },
+      "additionalProperties": false
+    },
+    "notes": {
+      "type": "string",
+      "description": "Composition notes, arrangement notes, or historical context."
+    },
+    "provenance": {
+      "$ref": "metadata-provenance.schema.json"
+    },
+    "provisional_enrichments": {
+      "type": "object",
+      "description": "Staging area for AI-generated metadata awaiting human promotion.",
+      "additionalProperties": {
+        "$ref": "metadata-provenance.schema.json#/$defs/provenance_wrapper"
+      }
+    },
+    "metadata_provenance": {
+      "type": "object",
+      "description": "JSON Pointer to a canonical value, never staging/provenance containers. Preserve origin and revision on promotion. Pointer resolution is verified by business rules.",
+      "additionalProperties": {
+        "$ref": "metadata-provenance.schema.json"
+      },
+      "propertyNames": {
+        "pattern": "^/(?:[^~]|~[01])*$"
+      }
+    },
+    "historical_import": {
+      "$ref": "metadata-provenance.schema.json#/$defs/historical_import"
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "catalog_origin": {
+            "const": "HISTORICAL_IMPORT"
+          }
+        },
+        "required": [
+          "catalog_origin"
+        ]
+      },
+      "then": {
+        "required": [
+          "historical_import"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "historical_import"
+          ]
+        }
+      }
+    }
+  ]
+}

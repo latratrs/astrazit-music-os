@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0.0",
+  "astrazit_release_id": "AST-REL-000001",
+  "title": "Fictional Horizon - Single",
+  "artist": "AstraZit",
+  "release_type": "SINGLE",
+  "catalog_origin": "NATIVE",
+  "lifecycle_status": "RELEASE_READY",
+  "release_date": "2026-09-15",
+  "upc": "123456789012",
+  "tracklist": [
+    {
+      "track_number": 1,
+      "disc_number": 1,
+      "astrazit_recording_id": "AST-REC-000001"
+    }
+  ],
+  "artwork": [
+    {
+      "asset_id": "art-rel-000001",
+      "asset_type": "COVER_ART",
+      "uri": "gs://astrazit-catalog-artwork/AST-REL-000001/cover_3000x3000.png",
+      "mime_type": "image/png"
+    }
+  ],
+  "distribution": [
+    {
+      "provider": "distrokid",
+      "external_release_id": "DK-REL-000001",
+      "status": "SUBMITTED"
+    }
+  ],
+  "provenance": {
+    "source": "HUMAN_ENTERED",
+    "source_system": "release_admin",
+    "generated_at": "2026-09-08T12:00:00Z",
+    "approval_status": "APPROVED",
+    "approver": "fictional-label-manager",
+    "approved_at": "2026-09-08T12:30:00Z",
+    "version": 1,
+    "canonical_status": "MASTER_METADATA",
+    "notes": " Fictional fixture only: no real ownership, approvals, catalog allocations, or assets are asserted."
+  }
+}

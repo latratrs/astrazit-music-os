@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/recording.schema.json",
+  "title": "AstraZit Sound Recording Schema",
+  "description": "The canonical data contract representing a specific recorded performance or audio master (Recording) of a musical work in AstraZit Music OS.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "astrazit_recording_id",
+    "astrazit_work_id",
+    "recording_title",
+    "version",
+    "artist",
+    "catalog_origin",
+    "lifecycle_status",
+    "music",
+    "master_rights",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the recording schema (e.g. 1.0.0)."
+    },
+    "astrazit_recording_id": {
+      "type": "string",
+      "pattern": "^AST-REC-[0-9]{6}$",
+      "description": "Immutable internal AstraZit sound recording identifier (e.g., AST-REC-000001).",
+      "minLength": 14,
+      "maxLength": 14
+    },
+    "astrazit_work_id": {
+      "type": "string",
+      "pattern": "^AST-WRK-[0-9]{6}$",
+      "description": "Reference to the underlying canonical musical work (AST-WRK-XXXXXX).",
+      "minLength": 14,
+      "maxLength": 14
+    },
+    "recording_title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Title of this recording cut (usually matches work title or includes version descriptor)."
+    },
+    "version": {
+      "type": "string",
+      "description": "Designation of version/cut (e.g., 'Original Mix', 'Radio Edit', 'Extended Mix', 'Instrumental', 'Remix', 'Remaster', 'Alternate Vocal')."
+    },
+    "artist": {
+      "type": "string",
+      "default": "AstraZit",
+      "description": "Primary performing artist credit."
+    },
+    "featured_artists": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Featured performing collaborators.",
+      "uniqueItems": true
+    },
+    "catalog_origin": {
+      "type": "string",
+      "enum": [
+        "NATIVE",
+        "HISTORICAL_IMPORT"
+      ],
+      "description": "Distinguishes native Music OS-originated recordings from historical pre-existing catalog imports."
+    },
+    "lifecycle_status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "VALIDATED",
+        "METADATA_REVIEW",
+        "MASTER_APPROVED",
+        "RELEASE_READY",
+        "RELEASED",
+        "ARCHIVED"
+      ],
+      "description": "Internal master production and recording lifecycle status."
+    },
+    "music": {
+      "type": "object",
+      "required": [
+        "duration_seconds"
+      ],
+      "properties": {
+        "duration_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "description": "Precise recording duration in seconds."
+        },
+        "bpm": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "description": "Beats per minute tempo of this recording."
+        },
+        "key": {
+          "type": "string",
+          "description": "Musical pitch class of this recording (e.g., 'C', 'F#', 'Bb')."
+        },
+        "scale": {
+          "type": "string",
+          "enum": [
+            "MAJOR",
+            "MINOR",
+            "MODAL",
+            "ATONAL"
+          ]
+        },
+        "genre": {
+          "type": "string",
+          "description": "Primary genre classification."
+        },
+        "subgenres": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "moods": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Emotional/vibe descriptors."
+        },
+        "energy": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Normalized acoustic energy rating."
+        },
+        "vocal_characteristics": {
+          "type": "object",
+          "properties": {
+            "has_vocals": {
+              "type": "boolean"
+            },
+            "vocal_type": {
+              "type": "string",
+              "enum": [
+                "INSTRUMENTAL",
+                "FEMALE",
+                "MALE",
+                "DUET",
+                "SYNTHETIC_AI",
+                "CHOIR",
+                "SAMPLED"
+              ]
+            },
+            "style_description": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "language": {
+          "type": "string",
+          "description": "BCP-47 or ISO 639-1 language code (e.g., 'en', 'zxx' for instrumental)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "asset-reference.schema.json"
+      },
+      "description": "References to master WAV, stream derivatives, stems, and DAW projects."
+    },
+    "master_rights": {
+      "type": "object",
+      "required": [
+        "owners",
+        "approval_status"
+      ],
+      "properties": {
+        "copyright_notice_sound_recording": {
+          "type": "string",
+          "description": "Phonogram copyright notice, e.g. '(P) 2026 AstraZit'."
+        },
+        "isrc": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$",
+          "description": "International Standard Recording Code for this specific sound recording."
+        },
+        "soundexchange_status": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "UNREGISTERED",
+                "PENDING_SUBMISSION",
+                "SUBMITTED",
+                "REGISTERED",
+                "DISPUTED",
+                "NOT_APPLICABLE"
+              ]
+            },
+            "recording_id": {
+              "type": "string"
+            },
+            "registered_at": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            }
+          },
+          "additionalProperties": false
+        },
+        "content_id": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "INACTIVE",
+                "ELIGIBLE",
+                "ACTIVE_MONETIZE",
+                "POLICY_RESTRICTED",
+                "MANUALLY_CLAIMED",
+                "EXCLUDED"
+              ],
+              "description": "YouTube Content ID lifecycle status."
+            },
+            "policy": {
+              "type": "string",
+              "enum": [
+                "MONETIZE",
+                "TRACK",
+                "BLOCK"
+              ],
+              "default": "MONETIZE"
+            },
+            "allowlist_channels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "YouTube Channel IDs exempt from claims.",
+              "uniqueItems": true
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "owners": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "percentage"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              "percentage": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Participants in the full master ownership allocation; exact total 100 is a deterministic business rule. Proposed allocations are not certified until approved."
+        },
+        "approval_status": {
+          "type": "string",
+          "enum": [
+            "DRAFT",
+            "PENDING_HUMAN_APPROVAL",
+            "APPROVED"
+          ],
+          "description": "Declared human approval status. Evidence is structurally required; caller authorization must be enforced by the write service."
+        },
+        "approved_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Human gatekeeper who verified split sheets and registrations."
+        },
+        "approved_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp of human approval."
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "approval_status": {
+                "const": "APPROVED"
+              }
+            },
+            "required": [
+              "approval_status"
+            ]
+          },
+          "then": {
+            "required": [
+              "approved_by",
+              "approved_at"
+            ],
+            "properties": {
+              "approved_by": {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              "approved_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "distribution": {
+      "type": "array",
+      "items": {
+        "$ref": "distribution-record.schema.json"
+      },
+      "description": "Recording-specific distribution and DSP adapter references."
+    },
+    "radio": {
+      "$ref": "radio-profile.schema.json",
+      "description": "Radio curation and rotation profile. AstraZit Radio consumes eligible Recordings."
+    },
+    "provenance": {
+      "$ref": "metadata-provenance.schema.json"
+    },
+    "provisional_enrichments": {
+      "type": "object",
+      "description": "Staging area for AI-generated metadata awaiting human promotion.",
+      "additionalProperties": {
+        "$ref": "metadata-provenance.schema.json#/$defs/provenance_wrapper"
+      }
+    },
+    "metadata_provenance": {
+      "type": "object",
+      "description": "JSON Pointer to a canonical value, never staging/provenance containers. Preserve origin and revision on promotion. Pointer resolution is verified by business rules.",
+      "additionalProperties": {
+        "$ref": "metadata-provenance.schema.json"
+      },
+      "propertyNames": {
+        "pattern": "^/(?:[^~]|~[01])*$"
+      }
+    },
+    "historical_import": {
+      "$ref": "metadata-provenance.schema.json#/$defs/historical_import"
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "catalog_origin": {
+            "const": "HISTORICAL_IMPORT"
+          }
+        },
+        "required": [
+          "catalog_origin"
+        ]
+      },
+      "then": {
+        "required": [
+          "historical_import"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "historical_import"
+          ]
+        }
+      }
+    }
+  ]
+}

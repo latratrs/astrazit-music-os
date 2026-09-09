@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.astrazit.com/v1/event-envelope.schema.json",
+  "title": "AstraZit Event Envelope Schema",
+  "description": "Standard canonical event envelope data contract for asynchronous lifecycle, analysis, and curation events.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "timestamp",
+    "producer",
+    "entity_type",
+    "entity_id",
+    "data_version",
+    "data"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Unique identifier for this event occurrence (e.g. UUIDv4).",
+      "minLength": 1
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "WORK_CREATED",
+        "RECORDING_CREATED",
+        "RECORDING_VALIDATED",
+        "AI_ANALYSIS_COMPLETE",
+        "MASTER_APPROVED",
+        "RELEASED",
+        "RADIO_ELIGIBLE",
+        "RIGHTS_UPDATED"
+      ],
+      "description": "Domain lifecycle event classification."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the event occurred."
+    },
+    "producer": {
+      "type": "string",
+      "description": "Service or subsystem originating the event (e.g., 'astrazit-catalog-service', 'astrazit-gemini-enricher', 'astrazit-radio-curator').",
+      "minLength": 1
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "WORK",
+        "RECORDING",
+        "RELEASE",
+        "RADIO_PROFILE",
+        "RIGHTS"
+      ]
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "Canonical identifier of target entity (e.g. AST-WRK-000001, AST-REC-000001, AST-REL-000001).",
+      "minLength": 1
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Trace or workflow correlation identifier across distributed operations."
+    },
+    "data_version": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of data contract payload."
+    },
+    "data": {
+      "type": "object",
+      "description": "Contextual payload or state transition delta.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "entity_type": {
+            "const": "WORK"
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_id": {
+            "pattern": "^AST-WRK-[0-9]{6}$",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "entity_type": {
+            "const": "RECORDING"
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_id": {
+            "pattern": "^AST-REC-[0-9]{6}$",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "entity_type": {
+            "const": "RELEASE"
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_id": {
+            "pattern": "^AST-REL-[0-9]{6}$",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "entity_type": {
+            "const": "RADIO_PROFILE"
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_id": {
+            "pattern": "^AST-REC-[0-9]{6}$",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "entity_type": {
+            "const": "RIGHTS"
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entity_id": {
+            "pattern": "^AST-(WRK|REC)-[0-9]{6}$",
+            "minLength": 14,
+            "maxLength": 14
+          }
+        }
+      }
+    }
+  ]
+}

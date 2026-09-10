@@ -32,6 +32,7 @@ Activate this skill when:
 - [IDENTIFIER_ALLOCATION.md](file:///c:/AI-PROJECTS/astrazit-music-os/docs/architecture/IDENTIFIER_ALLOCATION.md)
 - [PRODUCTION_IDENTIFIER_AUTHORITY.md](file:///c:/AI-PROJECTS/astrazit-music-os/docs/architecture/PRODUCTION_IDENTIFIER_AUTHORITY.md)
 - [CATALOG_REPOSITORY.md](file:///c:/AI-PROJECTS/astrazit-music-os/docs/architecture/CATALOG_REPOSITORY.md)
+- [LOCAL_DEMO_CATALOG.md](file:///c:/AI-PROJECTS/astrazit-music-os/docs/architecture/LOCAL_DEMO_CATALOG.md)
 - [packages/catalog/identifiers.py](file:///c:/AI-PROJECTS/astrazit-music-os/packages/catalog/identifiers.py)
 - [packages/catalog/sequence_store.py](file:///c:/AI-PROJECTS/astrazit-music-os/packages/catalog/sequence_store.py)
 - [packages/catalog/firestore_sequence_store.py](file:///c:/AI-PROJECTS/astrazit-music-os/packages/catalog/firestore_sequence_store.py)

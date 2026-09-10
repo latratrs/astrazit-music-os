@@ -127,4 +127,5 @@ catalog_sequences.json.initialized
 
 # Local mutable catalog repository state
 /.local/catalog/
+/.local/demo-catalog/
 /catalog_root/

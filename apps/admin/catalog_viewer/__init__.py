@@ -6,4 +6,3 @@ Provides a local, read-only browser-based viewer for the demo catalog sandbox.
 from __future__ import annotations
 
 __version__ = "0.1.0"
-

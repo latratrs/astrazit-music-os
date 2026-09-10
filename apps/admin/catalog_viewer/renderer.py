@@ -147,7 +147,7 @@ def render_dashboard(summary: CatalogSummaryView) -> str:
       <div class="card">
         <div class="card-title">Radio Playout Status</div>
         <div class="card-stat mono" style="font-size: 20px;">
-          <span style="color: #6ee7b7;">{summary.radio_eligible_count} Eligible</span> / 
+          <span style="color: #6ee7b7;">{summary.radio_eligible_count} Eligible</span> /
           <span style="color: #fca5a5;">{summary.radio_ineligible_count} Ineligible</span>
         </div>
         <div class="card-desc">Playout-ready broadcast rotation tracks</div>

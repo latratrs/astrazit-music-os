@@ -154,6 +154,39 @@ class FirestoreSequenceStore(SequenceStore):
                 import datetime
                 return datetime.datetime.now(datetime.timezone.utc)
 
+    def _run_transaction(self, client: Any, txn_callable: Callable[[Any], Any], max_attempts: int = 5) -> Any:
+        """Execute a callable in a transaction across real SDK or test doubles.
+
+        Handles google.cloud.firestore.transactional retry loop and maps
+        concurrency/contention exceptions (e.g. Aborted, AlreadyExists, Conflict)
+        into SequenceStoreConflictError.
+        """
+        # 1. Official google.cloud.firestore.Client
+        try:
+            from google.cloud import firestore as real_firestore
+            from google.api_core import exceptions as g_exceptions
+            if isinstance(client, real_firestore.Client):
+                txn = client.transaction(max_attempts=max_attempts)
+                wrapped = real_firestore.transactional(txn_callable)
+                try:
+                    return wrapped(txn)
+                except (g_exceptions.AlreadyExists, g_exceptions.Conflict) as exc:
+                    raise SequenceStoreConflictError(f"Firestore state conflict: {exc}") from exc
+                except ValueError as exc:
+                    if exc.__cause__ and isinstance(exc.__cause__, g_exceptions.Aborted):
+                        raise SequenceStoreConflictError(f"Firestore transaction contention: {exc}") from exc
+                    raise
+        except ImportError:
+            pass
+
+        # 2. Test doubles / fakes providing run_transaction
+        if hasattr(client, "run_transaction"):
+            return client.run_transaction(txn_callable, max_attempts=max_attempts)
+
+        # 3. Direct transaction invocation fallback
+        txn = client.transaction(max_attempts=max_attempts) if hasattr(client, "transaction") else client.transaction()
+        return txn_callable(txn)
+
     # --------------------------------------------------------------------------
     # Authority & Sequence Document Validation
     # --------------------------------------------------------------------------
@@ -275,12 +308,7 @@ class FirestoreSequenceStore(SequenceStore):
                 transaction.create(seq_collection.document(ns), doc_data)
 
         try:
-            if hasattr(client, "run_transaction"):
-                client.run_transaction(txn_bootstrap)
-            else:
-                # Direct invocation if custom transactional wrapper
-                txn = client.transaction()
-                txn_bootstrap(txn)
+            self._run_transaction(client, txn_bootstrap)
         except SequenceStoreConflictError:
             raise
         except Exception as exc:
@@ -376,7 +404,10 @@ class FirestoreSequenceStore(SequenceStore):
                 "last_issued": next_val,
                 "updated_at": server_ts,
             }
-            seq_ref.update(seq_updates, transaction=transaction)
+            if hasattr(transaction, "update"):
+                transaction.update(seq_ref, seq_updates)
+            else:
+                seq_ref.update(seq_updates, transaction=transaction)
 
             # 6. Create immutable ledger entry
             ledger_entry = {
@@ -392,11 +423,7 @@ class FirestoreSequenceStore(SequenceStore):
             return next_val
 
         try:
-            if hasattr(client, "run_transaction"):
-                return client.run_transaction(txn_allocate)
-            else:
-                txn = client.transaction()
-                return txn_allocate(txn)
+            return self._run_transaction(client, txn_allocate)
         except (SequenceExhaustedError, SequenceStateError, SequenceStoreConflictError):
             raise
         except Exception as exc:

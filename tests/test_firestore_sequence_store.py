@@ -434,5 +434,156 @@ class TestFirestoreSequenceStore(unittest.TestCase):
             os.chdir(current_cwd)
 
 
+class TestFirestoreRealSDKCompatibility(unittest.TestCase):
+    """Verifies compatibility with actual google-cloud-firestore SDK signatures and transactions.
+
+    Uses real SDK classes (firestore.Client spec, firestore.Transaction, firestore.DocumentReference,
+    firestore.SERVER_TIMESTAMP, exceptions.Aborted, exceptions.AlreadyExists) without contacting
+    Google Cloud or requiring network/credentials.
+    """
+
+    def setUp(self) -> None:
+        from unittest.mock import MagicMock
+        try:
+            from google.cloud import firestore
+            self.firestore = firestore
+        except ImportError:
+            self.skipTest("google-cloud-firestore is not installed")
+
+        self.client = MagicMock(spec=self.firestore.Client)
+        self.client._database_string = "projects/test-proj/databases/(default)"
+        self.client._rpc_metadata = ()
+        self.client._firestore_api.begin_transaction.return_value.transaction = b"txn-mock-id"
+        self.client._firestore_api.commit.return_value.write_results = []
+        self.client._firestore_api.commit.return_value.commit_time = None
+
+        self.real_txn = self.firestore.Transaction(client=self.client, max_attempts=3)
+        self.client.transaction.return_value = self.real_txn
+        self.store = FirestoreSequenceStore(client=self.client)
+
+    def test_real_sdk_bootstrap_transaction(self) -> None:
+        """Bootstrap executes through real SDK Transaction, creating authority and sequence docs."""
+        from unittest.mock import MagicMock
+
+        doc_mocks = {}
+        def doc_side_effect(path: str) -> Any:
+            if path not in doc_mocks:
+                m = MagicMock(spec=self.firestore.DocumentReference)
+                m._document_path = f"projects/test-proj/databases/(default)/documents/{path}"
+                snap = MagicMock()
+                snap.exists = False
+                m.get.return_value = snap
+                doc_mocks[path] = m
+            return doc_mocks[path]
+
+        self.client.collection.return_value.document.side_effect = doc_side_effect
+
+        self.store.bootstrap("auth-real-sdk")
+        # Verified begin_transaction and commit were called on the gRPC API
+        self.assertEqual(self.client._firestore_api.begin_transaction.call_count, 1)
+        self.assertEqual(self.client._firestore_api.commit.call_count, 1)
+
+    def test_real_sdk_allocation_transaction(self) -> None:
+        """Allocation executes transactional reads, Transaction.update, and Transaction.create."""
+        from unittest.mock import MagicMock
+
+        auth_snap = MagicMock()
+        auth_snap.exists = True
+        auth_snap.to_dict.return_value = {
+            "schema_version": 1,
+            "authority_id": "auth-real-sdk",
+            "state": "ACTIVE",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+        }
+
+        seq_snap = MagicMock()
+        seq_snap.exists = True
+        seq_snap.to_dict.return_value = {
+            "namespace": "WORK",
+            "schema_version": 1,
+            "last_issued": 0,
+            "updated_at": "2026-01-01T00:00:00Z",
+        }
+
+        ledger_snap = MagicMock()
+        ledger_snap.exists = False
+
+        doc_mocks = {}
+        def doc_side_effect(path: str) -> Any:
+            if path not in doc_mocks:
+                m = MagicMock(spec=self.firestore.DocumentReference)
+                m._document_path = f"projects/test-proj/databases/(default)/documents/{path}"
+                if "current" in path:
+                    m.get.return_value = auth_snap
+                elif path == "WORK":
+                    m.get.return_value = seq_snap
+                elif "WORK-000001" in path:
+                    m.get.return_value = ledger_snap
+                doc_mocks[path] = m
+            return doc_mocks[path]
+
+        self.client.collection.return_value.document.side_effect = doc_side_effect
+
+        allocator = IdentifierAllocator(self.store)
+        ast_id = allocator.allocate(EntityType.WORK)
+        self.assertEqual(ast_id, "AST-WRK-000001")
+        self.assertEqual(self.client._firestore_api.begin_transaction.call_count, 1)
+        self.assertEqual(self.client._firestore_api.commit.call_count, 1)
+
+    def test_real_sdk_contention_retries_and_maps_error(self) -> None:
+        """Aborted commit causes real transactional retry loop up to max_attempts and maps to SequenceStoreConflictError."""
+        from unittest.mock import MagicMock
+        from google.api_core import exceptions as g_exceptions
+
+        self.client._firestore_api.commit.side_effect = g_exceptions.Aborted("Contention occurred")
+
+        doc_mocks = {}
+        def doc_side_effect(path: str) -> Any:
+            if path not in doc_mocks:
+                m = MagicMock(spec=self.firestore.DocumentReference)
+                m._document_path = f"projects/test-proj/databases/(default)/documents/{path}"
+                snap = MagicMock()
+                snap.exists = False
+                m.get.return_value = snap
+                doc_mocks[path] = m
+            return doc_mocks[path]
+
+        self.client.collection.return_value.document.side_effect = doc_side_effect
+
+        with self.assertRaises(SequenceStoreConflictError) as ctx:
+            self.store.bootstrap("auth-real-sdk")
+
+        self.assertIn("contention", str(ctx.exception).lower())
+        # With max_attempts=3, exactly 3 commit attempts occurred before exhausting retries
+        self.assertEqual(self.client._firestore_api.commit.call_count, 3)
+
+    def test_real_sdk_already_exists_maps_error(self) -> None:
+        """AlreadyExists error maps directly to SequenceStoreConflictError without retry."""
+        from unittest.mock import MagicMock
+        from google.api_core import exceptions as g_exceptions
+
+        self.client._firestore_api.commit.side_effect = g_exceptions.AlreadyExists("Document exists")
+
+        doc_mocks = {}
+        def doc_side_effect(path: str) -> Any:
+            if path not in doc_mocks:
+                m = MagicMock(spec=self.firestore.DocumentReference)
+                m._document_path = f"projects/test-proj/databases/(default)/documents/{path}"
+                snap = MagicMock()
+                snap.exists = False
+                m.get.return_value = snap
+                doc_mocks[path] = m
+            return doc_mocks[path]
+
+        self.client.collection.return_value.document.side_effect = doc_side_effect
+
+        with self.assertRaises(SequenceStoreConflictError) as ctx:
+            self.store.bootstrap("auth-real-sdk")
+
+        self.assertIn("conflict", str(ctx.exception).lower())
+        self.assertEqual(self.client._firestore_api.commit.call_count, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

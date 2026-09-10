@@ -100,3 +100,23 @@ In accordance with ADR-014 and OS-005:
 - `FirestoreSequenceStore`: Distributed production authority backend.
 - A production runtime must never treat both backends as co-authoritative.
 - Zero import-time cloud connections exist in `packages.catalog`.
+
+---
+
+## 7. Official Python SDK & Emulator Validation Status (OS-006A)
+
+1. **SDK Version & Runtime**:
+   - Tested under Python 3.14.3 with `google-cloud-firestore==2.30.0` and its pinned dependency closure.
+   - Verified that `google.cloud.firestore.Client` provides `.transaction()` and `@firestore.transactional` decorator with automated retry loops on `google.api_core.exceptions.Aborted`.
+   - Verified transactional mutations require calling `transaction.update(ref, updates)` and `transaction.create(ref, data)` on the transaction object directly.
+   - Verified server timestamps using `firestore.SERVER_TIMESTAMP` generate valid `REQUEST_TIME` protobuf transforms for both creates and updates.
+   - Verified error mapping translates `AlreadyExists` and retry-exhausted contention into `SequenceStoreConflictError`.
+
+2. **Firestore Emulator Status**:
+   - **REAL FIRESTORE EMULATOR NOT TESTED**: The official Google Cloud Firestore emulator jar (`cloud-firestore-emulator-v1.20.2.jar`) requires Java Runtime 21+ (class file version 65.0), whereas the host system has Java 14.0.1 installed.
+   - Integration tests are codified in `tests/integration/test_firestore_emulator_sequence_store.py` with an explicit fail-safe requiring `FIRESTORE_EMULATOR_HOST`. In the absence of an emulator host, integration tests skip cleanly and refuse to connect to Google Cloud production.
+
+3. **Production Activation Prohibition**:
+   - Production Firestore resources remain unprovisioned.
+   - Identifier authority remains inactive.
+   - Issuing real AST identifiers remains strictly prohibited.

@@ -130,6 +130,59 @@ class DemoCatalogSandbox:
             )
         return data
 
+    def _verify_recoverable_incomplete_sandbox(self) -> dict[str, Any]:
+        """Verify a structurally safe, interrupted demo initialization.
+
+        Incomplete markers are intentionally accepted only by destructive
+        recovery.  Normal reads continue to use ``_read_marker`` and therefore
+        remain fail-closed.
+        """
+        if not self.sandbox_dir.exists() or not self.sandbox_dir.is_dir():
+            raise SandboxSafetyError("Incomplete sandbox root is not a directory")
+        if self.sandbox_dir.is_symlink() or getattr(self.sandbox_dir, "is_junction", lambda: False)():
+            raise SandboxSafetyError("Refusing to recover a symlink or junction sandbox root")
+        resolved = self.sandbox_dir.resolve()
+        if resolved.parent == resolved:
+            raise SandboxSafetyError("Sandbox path cannot be the filesystem root")
+        if not self.marker_path.exists() or self.marker_path.is_symlink():
+            raise SandboxSafetyError("Incomplete sandbox marker must be a regular file")
+        if not self.marker_path.is_file():
+            raise SandboxSafetyError("Incomplete sandbox marker must be a regular file")
+        try:
+            marker = parse_strict_json(self.marker_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise SandboxSafetyError(f"Corrupted demo sandbox marker: {exc}") from exc
+        if not isinstance(marker, dict):
+            raise SandboxSafetyError("Incomplete sandbox marker must be a JSON object")
+        if (
+            marker.get("mode") != "DEMO"
+            or marker.get("production") is not False
+            or marker.get("schema_version") != 1
+            # Older interrupted OS-007 initializations predate the explicit
+            # field; absence is conservatively treated as incomplete only on
+            # this dedicated recovery path.
+            or marker.get("initialized", False) is not False
+            or marker.get("id_mapping") != DEMO_TO_INTERNAL_ID
+        ):
+            raise SandboxSafetyError("Marker is not a recoverable incomplete demo marker")
+        try:
+            children = list(self.sandbox_dir.iterdir())
+        except OSError as exc:
+            raise SandboxSafetyError("Cannot inspect incomplete sandbox contents") from exc
+        allowed = {MARKER_FILE_NAME, "catalog"}
+        if {child.name for child in children} - allowed:
+            raise SandboxSafetyError("Refusing to recover sandbox containing unexpected files")
+        if not self.catalog_root.exists() or not self.catalog_root.is_dir() or self.catalog_root.is_symlink():
+            raise SandboxSafetyError("Incomplete sandbox catalog must be a real directory")
+        if getattr(self.catalog_root, "is_junction", lambda: False)():
+            raise SandboxSafetyError("Refusing to recover a junctioned catalog directory")
+        for root, dirs, files in os.walk(self.catalog_root, followlinks=False):
+            for name in [*dirs, *files]:
+                candidate = Path(root) / name
+                if candidate.is_symlink() or getattr(candidate, "is_junction", lambda: False)():
+                    raise SandboxSafetyError("Refusing to recover sandbox containing symlinked state")
+        return marker
+
     def _write_marker(self) -> None:
         """Write a clean safety marker file."""
         marker_data = {
@@ -160,8 +213,14 @@ class DemoCatalogSandbox:
                     raise CatalogConflictError(
                         f"Demo sandbox already exists at {self.sandbox_dir}. Use --force or reset to re-initialize."
                     )
-                # Safe to clean since marker exists
-                self._safe_wipe_sandbox()
+                # Safe to clean only after validating either a ready marker or
+                # the narrow recoverable-incomplete marker contract.
+                try:
+                    self._read_marker()
+                    self._safe_wipe_sandbox()
+                except SandboxSafetyError:
+                    self._verify_recoverable_incomplete_sandbox()
+                    self._safe_wipe_sandbox(allow_incomplete=True)
             else:
                 # Directory exists but lacks marker - dangerous! Refuse to overwrite.
                 raise SandboxSafetyError(
@@ -200,10 +259,14 @@ class DemoCatalogSandbox:
             "releases": len(fixtures["releases"]),
         }
 
-    def _safe_wipe_sandbox(self) -> None:
+    def _safe_wipe_sandbox(self, allow_incomplete: bool = False) -> None:
         """Safely wipe the sandbox directory after verifying marker safety."""
         # Double check marker
-        marker = self._read_marker()
+        marker = (
+            self._verify_recoverable_incomplete_sandbox()
+            if allow_incomplete
+            else self._read_marker()
+        )
         if marker.get("mode") != "DEMO" or marker.get("production") is not False:
             raise SandboxSafetyError("Refusing to wipe: not a verified DEMO directory.")
 
@@ -245,7 +308,11 @@ class DemoCatalogSandbox:
                 f"Cannot reset {self.sandbox_dir}: missing demo marker ({MARKER_FILE_NAME}). Safety boundary prevented deletion."
             )
 
-        self._safe_wipe_sandbox()
+        try:
+            self._safe_wipe_sandbox()
+        except SandboxSafetyError:
+            self._verify_recoverable_incomplete_sandbox()
+            self._safe_wipe_sandbox(allow_incomplete=True)
         if recreate:
             self.init(force=True)
 

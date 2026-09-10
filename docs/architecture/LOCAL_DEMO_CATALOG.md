@@ -17,6 +17,12 @@ The local demo catalog sandbox (pps.admin.catalog_demo) provides developers, op
 
 Fixture external registration fields are omitted or explicitly marked as demo-only; no real ISRC, UPC, ISWC, PRO, MLC, distributor, or platform registration is asserted.
 
+An interrupted initialization writes `initialized: false`. Reads continue to
+fail closed, while `reset --yes` (and `init --force`) may recover only when the
+marker, canonical mapping, directory shape, and symlink boundaries all pass
+the dedicated incomplete-sandbox verification. Malformed or unexpected state
+still requires manual review and is never deleted automatically.
+
 ---
 
 ## 2. Directory Layout

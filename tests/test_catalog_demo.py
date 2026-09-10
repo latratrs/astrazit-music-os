@@ -300,6 +300,53 @@ class TestLocalCatalogDemo(unittest.TestCase):
             except OSError:
                 pass
 
+    # 13. OS-007A: INCOMPLETE SANDBOX RECOVERY
+    def _make_incomplete(self):
+        self.sandbox.init()
+        marker_path = self.sandbox_dir / MARKER_FILE_NAME
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        marker["initialized"] = False
+        marker_path.write_text(json.dumps(marker), encoding="utf-8")
+
+    def test_incomplete_marker_is_unreadable_but_reset_recreates(self):
+        self._make_incomplete()
+        self.assertFalse(self.sandbox.is_initialized())
+        for operation in (self.sandbox.summary, lambda: self.sandbox.list_entities(EntityType.WORK), self.sandbox.validate):
+            with self.assertRaises(SandboxSafetyError):
+                operation()
+        self.sandbox.reset(confirmed=True, recreate=True)
+        self.assertTrue(self.sandbox.is_initialized())
+
+    def test_init_force_recovers_incomplete_sandbox(self):
+        self._make_incomplete()
+        counts = self.sandbox.init(force=True)
+        self.assertEqual(counts, {"works": 3, "recordings": 5, "releases": 3})
+        self.assertTrue(self.sandbox.is_initialized())
+
+    def test_incomplete_recovery_rejects_bad_marker_or_artifacts(self):
+        for mutate in (
+            lambda m: m.update(mode="NOT_DEMO"),
+            lambda m: m.update(production=True),
+            lambda m: m.update(schema_version=2),
+            lambda m: m.pop("id_mapping"),
+        ):
+            with self.subTest(mutate=mutate):
+                self._make_incomplete()
+                path = self.sandbox_dir / MARKER_FILE_NAME
+                marker = json.loads(path.read_text(encoding="utf-8"))
+                mutate(marker)
+                path.write_text(json.dumps(marker), encoding="utf-8")
+                with self.assertRaises(SandboxSafetyError):
+                    self.sandbox.reset(confirmed=True)
+                shutil.rmtree(self.sandbox_dir)
+
+    def test_incomplete_recovery_rejects_unexpected_file(self):
+        self._make_incomplete()
+        (self.sandbox_dir / "unexpected.txt").write_text("x", encoding="utf-8")
+        with self.assertRaises(SandboxSafetyError):
+            self.sandbox.reset(confirmed=True)
+        self.assertTrue((self.sandbox_dir / "unexpected.txt").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

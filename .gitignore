@@ -124,3 +124,7 @@ catalog_sequences.json
 catalog_sequences.json.lock
 catalog_sequences.json.initialized
 .ast_seq_tmp_*
+
+# Local mutable catalog repository state
+/.local/catalog/
+/catalog_root/

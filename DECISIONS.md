@@ -153,3 +153,20 @@ This ADR supersedes the illustrative untyped ID notation in ADR-003/ADR-004; the
   5. For OS-004 local contract verification, implement `LocalJsonSequenceStore` utilizing an atomic replace write strategy (`os.replace` + `fsync`), fail-closed strict JSON parsing (forbidding floats, bools, NaN, Infinity, duplicate keys), and advisory file locking (`msvcrt` on Windows / `fcntl` on POSIX).
   6. OS-004 explicitly documents that this local store provides single-host process and thread safety, but is NOT a distributed multi-host production allocator. Final production database selection is deferred to future tickets.
 - **Consequences**: Allocator contract is fully operational and testable today with zero external infrastructure dependencies or cloud provisioning. Downstream callers can transition to a future production database store seamlessly without altering allocator domain logic.
+
+---
+
+## ADR-015: CatalogRepository Abstraction and Local Durable Persistence Backend
+
+- **Status**: Accepted
+- **Date**: 2026-09-09
+- **Context**: AstraZit Music OS requires a canonical repository boundary to govern how validated canonical entities (`WORK`, `RECORDING`, `RELEASE`) are stored, retrieved, updated, and protected with strict referential integrity. Callers must be decoupled from storage details (filenames, directory layouts, database engines) so the persistence backend remains replaceable without rewriting domain logic.
+- **Decision**: Establish an immutable repository boundary for canonical catalog entities:
+  1. Define domain repository contract `CatalogRepository` (`create`, `get`, `update`, `exists`, `list_ids`) and domain errors (`CatalogValidationError`, `CatalogNotFoundError`, `CatalogConflictError`, `CatalogIntegrityError`, `CatalogStateError`, `CatalogPersistenceError`).
+  2. Every canonical record entering storage must pass offline JSON Schema Draft 2020-12 validation before persistence.
+  3. Pre-allocated AST identifiers are verified against entity types and schema; the repository never silently allocates IDs.
+  4. Referential integrity is strictly enforced: `RECORDING` must reference an existing `WORK`, and `RELEASE` tracklist entries must reference existing `RECORDING` entities. Wrong entity types and dangling references are rejected.
+  5. Canonical deletion is omitted in OS-005; canonical entities do not casually disappear.
+  6. For OS-005 local development, implement `LocalJsonCatalogRepository` using deterministic JSON serialization, atomic replace write strategy (`os.replace` + `fsync`), fail-closed strict JSON parsing (rejecting NaN, Infinity, duplicate keys), detached deep-copy returns, and advisory file locking (`FileLock`).
+  7. OS-005 documents that this local store provides single-host process and thread safety. Final production database selection (PostgreSQL, Cloud SQL, Spanner) is deferred to future tickets.
+- **Consequences**: Downstream applications and callers interact with a clean, stable catalog repository boundary today. The local development backend is fully operational, testable, and crash-resilient, with clear paths to future enterprise database backends.

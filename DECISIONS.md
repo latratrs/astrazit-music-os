@@ -170,3 +170,21 @@ This ADR supersedes the illustrative untyped ID notation in ADR-003/ADR-004; the
   6. For OS-005 local development, implement `LocalJsonCatalogRepository` using deterministic JSON serialization, atomic replace write strategy (`os.replace` + `fsync`), fail-closed strict JSON parsing (rejecting NaN, Infinity, duplicate keys), detached deep-copy returns, and advisory file locking (`FileLock`).
   7. OS-005 documents that this local store provides single-host process and thread safety. Final production database selection (PostgreSQL, Cloud SQL, Spanner) is deferred to future tickets.
 - **Consequences**: Downstream applications and callers interact with a clean, stable catalog repository boundary today. The local development backend is fully operational, testable, and crash-resilient, with clear paths to future enterprise database backends.
+
+---
+
+## ADR-016: Firestore as Production Identifier Authority Backend
+
+- **Status**: Accepted
+- **Date**: 2026-09-09
+- **Context**: AstraZit Music OS requires a production-capable, distributed, ACID-compliant authoritative backend for internal identifier allocation (`AST-WRK-`, `AST-REC-`, `AST-REL-`). The identifier authority must provide strict monotonicity, isolation across the three canonical namespaces, append-only allocation ledgers, crash resilience, and a fail-closed recovery gate without coupling callers to physical database technologies.
+- **Decision**: Adopt Google Cloud Firestore (Standard edition, Native mode) behind the existing `SequenceStore` interface as the production AST identifier allocation backend (`FirestoreSequenceStore`).
+  1. Namespaces remain strictly partitioned: `WORK`, `RECORDING`, and `RELEASE` from `000001` through `999999`.
+  2. Sequence document updates and immutable allocation ledger writes (`astrazit_id_allocations/{NAMESPACE}-{NUMBER}`) occur atomically within the same serializable transaction.
+  3. Normal allocation requires an explicit authority document (`astrazit_id_authority/current`) in state `ACTIVE`. Uninitialized or missing production state fails closed without automatic bootstrap.
+  4. Any backup restoration, point-in-time recovery, or suspected rollback leaves authority in `RECOVERY_REQUIRED`. Allocation is prohibited until explicit anti-rollback reconciliation proves a safe monotonic high-water mark from ledger evidence. Counters are never decreased.
+  5. Committed identifiers remain burned even if downstream caller or client responses fail. No compensation transaction may decrement counters or delete ledger entries.
+  6. `LocalJsonSequenceStore` is preserved for local development and offline contract tests; it is never co-authoritative with Firestore.
+  7. Firestore is selected strictly as the identifier authority backend; selection of the full catalog repository production database remains independent.
+- **Recovery limitation**: Firestore-internal reconciliation cannot detect a fully self-consistent stale restore containing an older counter, matching ledger, and `ACTIVE` authority metadata. Restore/replacement operations require an external process to force `RECOVERY_REQUIRED` and may require independent durable evidence before activation.
+- **Consequences**: Provides serverless, strongly consistent, ACID-backed identifier allocation without the operational overhead of managing a relational database cluster solely for sequence counters. Eliminates race conditions across distributed services.

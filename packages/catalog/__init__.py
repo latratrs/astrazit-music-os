@@ -26,6 +26,11 @@ from packages.catalog.repository import (
     CatalogValidationError,
     create_with_allocated_id,
 )
+from packages.catalog.firestore_sequence_store import (
+    AuthorityState,
+    FirestoreSequenceStore,
+    SequenceStoreConflictError,
+)
 from packages.catalog.sequence_store import (
     LocalJsonSequenceStore,
     SequenceStore,
@@ -37,6 +42,7 @@ from packages.catalog.validation import (
 
 __all__ = [
     "AllocatorError",
+    "AuthorityState",
     "CatalogConflictError",
     "CatalogError",
     "CatalogIntegrityError",
@@ -47,6 +53,7 @@ __all__ = [
     "CatalogValidationError",
     "CatalogValidator",
     "EntityType",
+    "FirestoreSequenceStore",
     "IdentifierAllocator",
     "InvalidEntityTypeError",
     "LocalJsonCatalogRepository",
@@ -55,6 +62,7 @@ __all__ = [
     "SequencePersistenceError",
     "SequenceStateError",
     "SequenceStore",
+    "SequenceStoreConflictError",
     "create_with_allocated_id",
     "format_identifier",
     "get_default_validator",

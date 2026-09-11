@@ -129,3 +129,6 @@ catalog_sequences.json.initialized
 /.local/catalog/
 /.local/demo-catalog/
 /catalog_root/
+
+# Local radio playout runtime state, logs, and test music
+.local/radio/

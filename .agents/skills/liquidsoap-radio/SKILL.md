@@ -24,5 +24,6 @@ Activate this skill when:
 ## 4. Authoritative References
 - [PROJECT.md](file:///c:/AI-PROJECTS/astrazit-music-os/PROJECT.md)
 - [DECISIONS.md - ADR-002, ADR-006, ADR-008](file:///c:/AI-PROJECTS/astrazit-music-os/DECISIONS.md)
-- TODO: Liquidsoap Station Script (`apps/radio/station.liq` - to be established in RADIO tickets)
+- [Liquidsoap Station Script](file:///c:/AI-PROJECTS/astrazit-music-os/apps/radio/station.liq) (Established in RADIO-001)
+- [Local Radio Playout Architecture](file:///c:/AI-PROJECTS/astrazit-music-os/docs/architecture/LOCAL_RADIO_PLAYOUT.md) (Established in RADIO-001)
 - TODO: Fallback Audio Asset Guide (to be established)

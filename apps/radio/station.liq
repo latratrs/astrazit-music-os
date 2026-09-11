@@ -1,21 +1,30 @@
-﻿# AstraZit Radio - Production Liquidsoap Station Playout Template
-# Governed by RADIO-001, ADR-002, ADR-006, and ADR-008.
+# AstraZit Radio - Production Liquidsoap Station Playout Template
+# Governed by RADIO-001, RADIO-002, ADR-002, ADR-006, and ADR-008.
 #
-# Production Runtime: Linux / Dedicated VPS
+# Production Runtime: Linux / Dedicated VPS (/opt/astrazit-radio)
 # Enforces:
 # - Zero AI calls in track transition hot path
 # - Deterministic local rotation from music directory
 # - Fallback emergency tone to prevent dead air
 # - Conservative crossfade transition
-# - Machine-readable play logging
+# - Machine-readable play logging (STATION_START, TRACK_START, STATION_STOP)
+# - Verifiable audio decoding sinks (output.dummy or output.file %wav)
 
 # Settings
 settings.server.telnet := false
 settings.log.level := 3
 
-# Directory Configuration
-music_dir = environment.get(default="/var/astrazit/radio/music", "RADIO_MUSIC_DIR")
-log_file = environment.get(default="/var/astrazit/radio/logs/plays.jsonl", "RADIO_LOG_FILE")
+# Directory & Log Configuration
+music_dir = environment.get(default="/opt/astrazit-radio/music", "RADIO_MUSIC_DIR")
+log_file = environment.get(default="/opt/astrazit-radio/logs/plays.jsonl", "RADIO_LOG_FILE")
+output_mode = environment.get(default="dummy", "RADIO_OUTPUT_MODE")
+output_file = environment.get(default="/opt/astrazit-radio/state/test_playout.wav", "RADIO_OUTPUT_FILE")
+
+# Station Lifecycle Logging: Start Event
+file.write(data='{"timestamp":"' ^ string_of(time()) ^ '","event":"STATION_START"}\n', append=true, log_file)
+
+# Station Lifecycle Logging: Stop Event on Process Termination
+on_shutdown(fun () -> file.write(data='{"timestamp":"' ^ string_of(time()) ^ '","event":"STATION_STOP"}\n', append=true, log_file))
 
 # Emergency Fallback Tone (440Hz sine wave)
 fallback_source = sine(440.0)
@@ -24,13 +33,7 @@ fallback_source = sine(440.0)
 # Discovers .mp3, .wav, .flac, .m4a
 playlist_source = playlist(
   reload_mode="watch",
-  mime_types=[
-    "audio/mpeg",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/flac",
-    "audio/mp4"
-  ],
+  mode="normal",
   music_dir
 )
 
@@ -42,15 +45,18 @@ station = fallback(track_sensitive=false, [radio, fallback_source])
 
 # Track Transition Logger (JSONL append)
 def log_track(m) =
-  title = m["title"]
-  artist = m["artist"]
   filename = m["filename"]
   log_entry = '{"timestamp":"' ^ string_of(time()) ^ '","event":"TRACK_START","track_name":"' ^ filename ^ '"}\n'
   file.write(data=log_entry, append=true, log_file)
 end
 
-station.on_track(log_track)
+playlist_source.on_track(log_track)
 
-# Output: Local Test Audio or Icecast / Pipe
-# For headless VPS / testing: output.dummy
-output.dummy(station)
+# Output Sink Selection
+# - "dummy": Default headless playout (real-time decoding without physical audio device)
+# - "file": Decoded audio PCM WAV sink for verification and acceptance testing
+if output_mode == "file" then
+  output.file(%wav, output_file, station)
+else
+  output.dummy(station)
+end

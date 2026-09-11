@@ -1,0 +1,26 @@
+[Unit]
+Description=AstraZit Music OS Radio Playout Daemon
+After=network.target sound.target
+Documentation=https://github.com/astrazit/astrazit-music-os
+
+[Service]
+Type=simple
+User=astrazit
+Group=astrazit
+WorkingDirectory=/opt/astrazit-radio
+Environment="RADIO_MUSIC_DIR=/opt/astrazit-radio/music" "RADIO_LOG_FILE=/opt/astrazit-radio/logs/plays.jsonl" "RADIO_STATE_FILE=/opt/astrazit-radio/state/radio_state.json" "RADIO_OUTPUT_MODE=dummy"
+ExecStart=/usr/bin/liquidsoap /opt/astrazit-radio/app/station.liq
+Restart=always
+RestartSec=5s
+KillMode=process
+StandardOutput=journal
+StandardError=journal
+
+# Security Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

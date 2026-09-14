@@ -164,6 +164,12 @@ systemctl daemon-reload
 systemctl enable astrazit-radio.service
 echo "--> Playout service (astrazit-radio.service) enabled."
 
+# If playout service is already active, restart it so updated station/drop-in config takes effect
+if systemctl is-active --quiet astrazit-radio.service; then
+    echo "--> Playout service is active; restarting astrazit-radio to apply updated configuration..."
+    systemctl restart astrazit-radio.service
+fi
+
 # astrazit-stream.service must NOT be enabled or started automatically by setup.
 # Publisher activation is an explicit operator action after verifying configuration and installing a valid STREAM_KEY.
 STREAM_ENV_FILE="${BASE_DIR}/config/stream.env"

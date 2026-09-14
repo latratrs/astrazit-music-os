@@ -136,6 +136,8 @@ Rather than broad repository-wide glob exclusions, the repository maintains narr
   ```ini
   [Unit]
   Description=AstraZit Music OS Radio YouTube Video Stream Supervisor
+  StartLimitIntervalSec=300
+  StartLimitBurst=5
   After=network.target network-online.target astrazit-radio.service
   Wants=network-online.target astrazit-radio.service
   Documentation=https://github.com/astrazit/astrazit-music-os
@@ -231,3 +233,27 @@ sudo bash scripts/linux/verify_youtube_stream.sh
   - Production 24h / 72h continuous broadcast soak.
   - Actual YouTube private/unlisted live ingest (requires `RUN_LIVE_TEST=1` and `STREAM_KEY`).
   - Production systemd lifecycle testing on the live host.
+
+---
+
+## 9. RADIO-004 Pre-24/7 Operational Hardening Decisions
+
+### A. Radio Dependency
+- Retain `Wants=network-online.target astrazit-radio.service` and `After=network.target network-online.target astrazit-radio.service`.
+- `Requires=` and `BindsTo=` were intentionally rejected: brief Harbor or playout interruptions should not automatically tear down the publisher and drop the YouTube live session.
+- Persistent startup or runtime failures are bounded by systemd start-rate limiting (`StartLimitIntervalSec=300`, `StartLimitBurst=5`), ensuring the unit eventually enters a failed state rather than restarting indefinitely.
+
+### B. Harbor Binding
+- The authoritative loopback control for Harbor is:
+  ```ocaml
+  settings.harbor.bind_addrs := ["127.0.0.1"]
+  ```
+- Playout daemon verification previously proved loopback-only binding; no unsupported per-output bind arguments (`host=`) are added to `output.harbor(...)`.
+
+### C. RTMPS Timeout
+- Status: **VERIFIED AND IMPLEMENTED**
+- FFmpeg 6.1.1 target binary on the Linux VPS exposes `rw_timeout` (`Timeout for IO operations (in microseconds)`).
+- A loopback-only RTMPS parsing test against a closed local port accepted `-rw_timeout 15000000` (15 seconds) and proceeded to network connection initialization without option errors.
+- Negative control test verified that unsupported options are correctly rejected.
+- The 15-second network timeout (`-rw_timeout 15000000`) is applied strictly to YouTube RTMPS output mode; local file mode remains unaffected.
+- Zero external RTMP/RTMPS connections were made during capability validation.

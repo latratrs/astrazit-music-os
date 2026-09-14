@@ -69,8 +69,11 @@ echo "Starting FFmpeg multiplexing and encoding pipeline..."
 echo "============================================================"
 
 # Execute FFmpeg Pipeline:
-# - Video: 1280x720 30fps, libx264 veryfast, stillimage tune, 4000k CBR, 2s keyframe (g=60)
+# - Video: 1280x720 30fps, libx264 veryfast, stillimage tune, 2500k CBR, 2s keyframe (g=60)
+# - Rate Control: 2500 Kbps enforced CBR video with x264 HRD filler (nal-hrd=cbr:force-cfr=1).
+#   x264 HRD filler is required because static/low-motion graphics otherwise collapse to ~100 Kbps wire bitrate.
 # - Audio: AAC stereo 44.1kHz, 128kbps from Liquidsoap Harbor
+# - Expected aggregate ingest bitrate: ~2.6 Mbps (2500k video + 128k audio)
 # - Resilient reconnect on audio HTTP input
 FFMPEG_CMD=(
     ffmpeg
@@ -89,10 +92,11 @@ FFMPEG_CMD=(
     -c:v libx264
     -preset veryfast
     -tune stillimage
-    -b:v 4000k
-    -minrate 4000k
-    -maxrate 4000k
-    -bufsize 8000k
+    -b:v 2500k
+    -minrate 2500k
+    -maxrate 2500k
+    -bufsize 5000k
+    -x264-params "nal-hrd=cbr:force-cfr=1"
     -pix_fmt yuv420p
     -r 30
     -g 60

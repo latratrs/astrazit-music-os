@@ -147,11 +147,13 @@ class TestRadioYouTubeStreamAssets(unittest.TestCase):
         self.assertIn("-r 30", text)
         self.assertIn("-pix_fmt yuv420p", text)
 
-        # 2. Video CBR: ~4 Mbps CBR with matching minrate/maxrate/bufsize
-        self.assertIn("-b:v 4000k", text)
-        self.assertIn("-minrate 4000k", text)
-        self.assertIn("-maxrate 4000k", text)
-        self.assertIn("-bufsize 8000k", text)
+        # 2. Video CBR: 2500 Kbps CBR with matching minrate/maxrate/bufsize and x264 HRD filler
+        self.assertIn("-b:v 2500k", text)
+        self.assertIn("-minrate 2500k", text)
+        self.assertIn("-maxrate 2500k", text)
+        self.assertIn("-bufsize 5000k", text)
+        self.assertIn('-x264-params "nal-hrd=cbr:force-cfr=1"', text)
+        self.assertNotIn("-b:v 4000k", text, "Must not regress to nominal 4000k VBV-only without HRD filler")
 
         # 3. Keyframe Interval: 2.0s GOP (60 frames at 30 fps)
         self.assertIn("-g 60", text)

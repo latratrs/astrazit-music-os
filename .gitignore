@@ -40,6 +40,11 @@ library/
 local_media/
 music_vault/
 
+# Scoped Radio runtime/generated media and local stream configuration
+/apps/radio/assets/generated/
+/apps/radio/stream.env
+/apps/radio/runtime/
+
 # Python
 __pycache__/
 *.py[cod]

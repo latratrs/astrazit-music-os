@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# AstraZit Radio - Production FFmpeg Video Stream Supervisor
+# Governed by RADIO-003, ADR-002, ADR-006, and ADR-008.
+#
+# Multiplexes:
+# - Video: 1280x720, 30 fps, H.264, 4 Mbps CBR, 2s GOP (-stream_loop -1)
+# - Audio: AAC stereo, 44.1 kHz, 128 kbps from Liquidsoap Harbor (127.0.0.1:8000)
+# - Output: RTMPS to YouTube Live or local FLV sink for verification
+# ==============================================================================
+set -euo pipefail
+set +x
+
+# Directory Defaults
+BASE_DIR="${BASE_DIR:-/opt/astrazit-radio}"
+
+# Stream Input / Output Configuration (supplied strictly via runtime environment or systemd EnvironmentFile)
+STREAM_INPUT_VIDEO="${STREAM_INPUT_VIDEO:-${BASE_DIR}/assets/visual_loop.mp4}"
+STREAM_INPUT_AUDIO="${STREAM_INPUT_AUDIO:-http://127.0.0.1:8000/radio.wav}"
+STREAM_OUTPUT_MODE="${STREAM_OUTPUT_MODE:-youtube}"
+STREAM_OUTPUT_FILE="${STREAM_OUTPUT_FILE:-${BASE_DIR}/state/test_stream.flv}"
+YOUTUBE_RTMPS_BASE="${YOUTUBE_RTMPS_BASE:-rtmps://a.rtmps.youtube.com/live2}"
+STREAM_DURATION="${STREAM_DURATION:-0}"  # 0 = infinite, >0 = limit in seconds
+
+echo "============================================================"
+echo " AstraZit Radio - FFmpeg Streaming Engine (RADIO-003)"
+echo "============================================================"
+echo "Video Loop:   ${STREAM_INPUT_VIDEO}"
+echo "Audio Source: ${STREAM_INPUT_AUDIO}"
+echo "Output Mode:  ${STREAM_OUTPUT_MODE}"
+
+# 1. Validate Visual Input
+if [[ ! -f "${STREAM_INPUT_VIDEO}" ]]; then
+    echo "ERROR: Video loop asset not found: ${STREAM_INPUT_VIDEO}" >&2
+    echo "Generate with: bash $(dirname "$0")/../../scripts/linux/generate_visual_loop.sh" >&2
+    exit 1
+fi
+
+# 2. Output Destination Resolution
+EXTRA_ARGS=()
+if [[ "${STREAM_DURATION}" -gt 0 ]]; then
+    EXTRA_ARGS+=("-t" "${STREAM_DURATION}")
+fi
+
+if [[ "${STREAM_OUTPUT_MODE}" == "file" ]]; then
+    mkdir -p "$(dirname "${STREAM_OUTPUT_FILE}")"
+    TARGET_URL="${STREAM_OUTPUT_FILE}"
+    echo "Target File:  ${TARGET_URL}"
+elif [[ "${STREAM_OUTPUT_MODE}" == "youtube" ]]; then
+    if [[ "${YOUTUBE_RTMPS_BASE}" != rtmps://* ]]; then
+        echo "ERROR: YOUTUBE_RTMPS_BASE must use secure rtmps:// transport." >&2
+        exit 1
+    fi
+    STREAM_KEY="${STREAM_KEY:-}"
+    if [[ -z "${STREAM_KEY//[[:space:]]/}" ]]; then
+        echo "ERROR: STREAM_KEY is not defined or is whitespace-only in environment." >&2
+        echo "Supply a valid non-empty STREAM_KEY via runtime environment or systemd EnvironmentFile." >&2
+        exit 1
+    fi
+    TARGET_URL="${YOUTUBE_RTMPS_BASE}/${STREAM_KEY}"
+    echo "Target:       YouTube Live (RTMPS secure ingest)"
+else
+    echo "ERROR: Unknown STREAM_OUTPUT_MODE: ${STREAM_OUTPUT_MODE} (expected 'youtube' or 'file')" >&2
+    exit 1
+fi
+
+echo "============================================================"
+echo "Starting FFmpeg multiplexing and encoding pipeline..."
+echo "============================================================"
+
+# Execute FFmpeg Pipeline:
+# - Video: 1280x720 30fps, libx264 veryfast, stillimage tune, 4000k CBR, 2s keyframe (g=60)
+# - Audio: AAC stereo 44.1kHz, 128kbps from Liquidsoap Harbor
+# - Resilient reconnect on audio HTTP input
+FFMPEG_CMD=(
+    ffmpeg
+    -hide_banner
+    -loglevel warning
+    -re
+    -stream_loop -1
+    -i "${STREAM_INPUT_VIDEO}"
+    -reconnect 1
+    -reconnect_at_eof 1
+    -reconnect_streamed 1
+    -reconnect_delay_max 2
+    -i "${STREAM_INPUT_AUDIO}"
+    -map 0:v:0
+    -map 1:a:0
+    -c:v libx264
+    -preset veryfast
+    -tune stillimage
+    -b:v 4000k
+    -minrate 4000k
+    -maxrate 4000k
+    -bufsize 8000k
+    -pix_fmt yuv420p
+    -r 30
+    -g 60
+    -keyint_min 60
+    -sc_threshold 0
+    -c:a aac
+    -b:a 128k
+    -ar 44100
+    -ac 2
+    "${EXTRA_ARGS[@]}"
+    -f flv
+    "${TARGET_URL}"
+)
+
+if [[ "${STREAM_OUTPUT_MODE}" == "youtube" ]]; then
+    # In YouTube/RTMPS mode, raw FFmpeg diagnostics on stderr could leak the stream key
+    # if connection initialization fails. Suppress raw stderr from journal/logs,
+    # capture exit status, and emit a sanitized failure message.
+    set +e
+    "${FFMPEG_CMD[@]}" >/dev/null 2>&1
+    FFMPEG_STATUS=$?
+    set -e
+    if [[ "${FFMPEG_STATUS}" -ne 0 ]]; then
+        echo "ERROR: FFmpeg publisher exited with status ${FFMPEG_STATUS}." >&2
+        exit "${FFMPEG_STATUS}"
+    fi
+else
+    # In local file mode, no secrets exist; retain standard diagnostics for inspection.
+    exec "${FFMPEG_CMD[@]}"
+fi

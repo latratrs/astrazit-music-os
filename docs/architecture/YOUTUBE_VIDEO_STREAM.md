@@ -74,8 +74,7 @@ The streaming pipeline executes via `apps/radio/stream.sh` using the following e
 | **Video Resolution** | 1280x720 (720p HD) | `1280x720` | YouTube Live standard 720p 16:9 canvas |
 | **Framerate** | 30.00 fps constant | `-r 30` | Smooth motion with lightweight VPS CPU load |
 | **Video Codec** | H.264 / AVC (High Profile) | `-c:v libx264 -pix_fmt yuv420p` | Universal YouTube Live ingest compatibility |
-| **Preset / Tuning** | `veryfast` / `stillimage` | `-preset veryfast -tune stillimage` | Optimizes CPU efficiency on 2-core VPS |
-| **Video Bitrate** | 4000 kbps constant (~4 Mbps) | `-b:v 4000k -minrate 4000k -maxrate 4000k -bufsize 8000k` | CBR enforcement for stream stability |
+| **Video Bitrate** | 2500 kbps constant (~2.5 Mbps) | `-b:v 2500k -minrate 2500k -maxrate 2500k -bufsize 5000k -x264-params "nal-hrd=cbr:force-cfr=1"` | CBR enforcement with HRD filler to prevent static visual bitrate collapse |
 | **Keyframe Interval**| Exactly 2.0 seconds (60 frames) | `-g 60 -keyint_min 60 -sc_threshold 0` | YouTube Live requirement for chunk alignment |
 | **Audio Codec** | AAC-LC | `-c:a aac` | Clean audio encoding for broadcast |
 | **Audio Bitrate** | 128 kbps CBR | `-b:a 128k` | CD-quality speech and synthwave delivery |

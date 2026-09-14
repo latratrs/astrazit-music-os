@@ -26,7 +26,7 @@ Establish and validate the video streaming pipeline for **AstraZit Radio** from 
    - Drop-in unit overrides production service environment to `RADIO_OUTPUT_MODE=harbor` on `127.0.0.1:8000`.
 
 3. **FFmpeg Streaming Supervisor Script (`apps/radio/stream.sh`)**:
-   - Encodes 1280x720 30 fps video at 4000 kbps CBR with 2.0s GOP (`-g 60 -keyint_min 60 -sc_threshold 0`).
+   - Encodes 1280x720 30 fps video at 2500 kbps CBR with 2.0s GOP (`-g 60 -keyint_min 60 -sc_threshold 0`) and x264 HRD filler (`nal-hrd=cbr:force-cfr=1`) to prevent static visual bitrate collapse.
    - Encodes AAC stereo audio at 44.1 kHz, 128 kbps.
    - Loops visual background continuously without boundary restarts (`-stream_loop -1 -re`).
    - Resilient audio reconnect flags (`-reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 2`).
@@ -81,6 +81,7 @@ Establish and validate the video streaming pipeline for **AstraZit Radio** from 
 - [x] **Host-side /proc isolation**: Verified and persisted with `hidepid=2` (`hidepid=invisible`) in `/etc/fstab` on Ubuntu 24.04.5 VPS.
 - [x] **Stage-A VPS Retest**: Fully executed and passed on Ubuntu 24.04.5 on the byte-identical pre-correction version.
 - [x] **Focused Activation-Only Host Validation**: Verified on Ubuntu 24.04.5 LTS using isolated behavioral harness and static analysis (zero auto-enablement across all 8 configurations).
-- [ ] **YouTube Live Private Ingest (Stage B)**: Executing live private/unlisted stream with `RUN_LIVE_TEST=1` and a runtime-injected stream key for 30–60 minutes.
+- [x] **YouTube Live Private Ingest (Stage B2 initial test)**: Executed live unlisted broadcast for >18 minutes on Ubuntu 24.04.5 VPS. Audio/video presence, Liquidsoap handoff, and systemd stability passed with zero restarts. Bitrate compliance issue identified (~220–256 Kbps vs 2500 Kbps recommended due to static visual entropy collapse without HRD filler).
+- [x] **YouTube Live CBR Compliance Validation (Stage B2 retest)**: Validated on Ubuntu 24.04.5 VPS during controlled live ingest (BITRATE-004). Video picture and audio verified, connection health excellent, ingest bitrate stabilized at ~2.4–2.7 Mbps, previous low-bitrate warning CLEARED, NRestarts=0, and clean cgroup termination confirmed. Bitrate defect RESOLVED.
 - [ ] **Long-duration A/V sync**: Measuring drift during extended 30–60 minute live broadcast.
 - [ ] **Production systemd lifecycle**: Testing live service start/restart/crash recovery under systemd on the VPS.

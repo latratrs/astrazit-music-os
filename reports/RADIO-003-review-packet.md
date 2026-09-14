@@ -206,6 +206,20 @@ Reviewers can execute the following validation commands directly:
 - Systemd `daemon-reload` observed: **PASS**
 - Final Codex T3 re-review verdict: **PASS (Previous P1 Resolved, Release-blocking findings: None)**
 
+### Stage-B2 Controlled Live YouTube Ingest & Bitrate Diagnostics (Ubuntu 24.04.5 LTS):
+- Stage-B1 Production Installation: **PASSED** (Exact byte-for-byte SHA256 match, 0600 stream.env, publisher disabled/inactive).
+- Stage-B2 Live Ingest: **PASSED** (Live video visible in YouTube Studio, audio audible after unmute, >18m stable playout, NRestarts=0, clean cgroup termination).
+- Observed Warning in YouTube Studio: Ingest bitrate ~220–256 Kbps (lower than recommended 2500 Kbps).
+- **BITRATE-001 Root Cause Analysis**: Static visual loop inter-frame prediction drops x264 entropy to ~100 Kbps. Because `-x264-params nal-hrd=cbr:force-cfr=1` was missing, nominal 4000k VBV cap was not enforced as a wire floor.
+- **BITRATE-002 Rate Control Correction**: Corrected `stream.sh` to 2500 Kbps CBR (`-b:v 2500k -minrate 2500k -maxrate 2500k -bufsize 5000k -x264-params "nal-hrd=cbr:force-cfr=1"`) to guarantee constant wire bitrate for static graphics while conserving egress bandwidth (~28 GB/day).
+- **BITRATE-003 Focused T2 Specialist Review**: DeepSeek V4 Pro: PASS; Grok 4.6: zero bitrate blockers; consolidated P0/P1: NONE.
+- **BITRATE-004 Production Validation & Live Retest (Ubuntu 24.04.5 LTS)**:
+  - Deployed `stream.sh` SHA256 exact match (`1db132a7b0c40699be3492ecf1f6e9c6eb58d013b9ebb8b31cc38365dd40aa86`).
+  - Production local CBR file test: PASSED (~2.5 Mbps video, 128 kbps audio, NAL filler ~10.4 KB/frame).
+  - YouTube live ingest: PASSED (Video visible, music audible, connection health EXCELLENT).
+  - Ingest bitrate stabilized at ~2.4–2.7 Mbps; previous low-bitrate warning CLEARED.
+  - 5-minute stability: PASSED with NRestarts=0; clean cgroup stop confirmed; publisher disabled/inactive; radio enabled/active. Bitrate defect RESOLVED.
+
 ---
 
 ## External Gates Status
@@ -214,9 +228,10 @@ Reviewers can execute the following validation commands directly:
 2. **Fresh Stage-A VPS Retest**: **PASSED** (All 10 verification steps and cgroup lifecycle passed).
 3. **Focused Activation-Only Host Validation**: **PASSED** (Isolated harness and static audit verified zero auto-enablement).
 4. **Final T3 Release Gate (Codex)**: **PASSED** (Release-blocking findings: NONE).
-5. **Human Approval / Commit Gate**: **READY** (Awaiting human approval to commit to git).
-6. **Private/Unlisted YouTube Stage-B Test (GATE-02 / GATE-09)**: Post-commit gate; supply valid `STREAM_KEY` via runtime secret and verify 30–60 minute private broadcast ingest health in YouTube Live Studio.
-7. **Production Deployment & Extended Soak (24h/72h)**: Post-commit gate; explicit operator service enablement and soak verification.
+5. **Human Approval / Commit Gate (Initial MVP)**: **PASSED** (Merged into `main` at commit `4ddd01053b8f037ff2b7f06583c5accb395320c6`).
+6. **Private/Unlisted YouTube Stage-B2 Live Ingest (GATE-02 / GATE-09)**: **PASSED** (>18m uninterrupted broadcast confirmed in YouTube Studio; low-bitrate warning triaged under BITRATE-001/002).
+7. **YouTube CBR Compliance Retest (Stage-B2 Retest)**: **PASSED** (Verified on Ubuntu 24.04.5 LTS; ~2.4–2.7 Mbps ingest; warning cleared; NRestarts=0; clean cgroup stop).
+8. **Production Deployment & Extended Soak (24h/72h)**: Post-merge gate; explicit operator service enablement and soak verification.
 
 ---
 

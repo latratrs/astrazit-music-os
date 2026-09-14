@@ -2,6 +2,8 @@
 Description=AstraZit Music OS Radio YouTube Video Stream Supervisor
 After=network.target network-online.target astrazit-radio.service
 Wants=network-online.target astrazit-radio.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
 Documentation=https://github.com/astrazit/astrazit-music-os
 
 [Service]

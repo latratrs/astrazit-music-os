@@ -20,7 +20,13 @@ STREAM_INPUT_AUDIO="${STREAM_INPUT_AUDIO:-http://127.0.0.1:8000/radio.wav}"
 STREAM_OUTPUT_MODE="${STREAM_OUTPUT_MODE:-youtube}"
 STREAM_OUTPUT_FILE="${STREAM_OUTPUT_FILE:-${BASE_DIR}/state/test_stream.flv}"
 YOUTUBE_RTMPS_BASE="${YOUTUBE_RTMPS_BASE:-rtmps://a.rtmps.youtube.com/live2}"
-STREAM_DURATION="${STREAM_DURATION:-0}"  # 0 = infinite, >0 = limit in seconds
+STREAM_DURATION="${STREAM_DURATION-0}"  # 0 = infinite, >0 = limit in seconds
+
+# Validate STREAM_DURATION (fail-closed, must be non-negative integer)
+if [[ ! "${STREAM_DURATION}" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: STREAM_DURATION must be a non-negative integer." >&2
+    exit 1
+fi
 
 echo "============================================================"
 echo " AstraZit Radio - FFmpeg Streaming Engine (RADIO-003)"
@@ -38,6 +44,7 @@ fi
 
 # 2. Output Destination Resolution
 EXTRA_ARGS=()
+OUTPUT_NETWORK_ARGS=()
 if [[ "${STREAM_DURATION}" -gt 0 ]]; then
     EXTRA_ARGS+=("-t" "${STREAM_DURATION}")
 fi
@@ -58,6 +65,11 @@ elif [[ "${STREAM_OUTPUT_MODE}" == "youtube" ]]; then
         exit 1
     fi
     TARGET_URL="${YOUTUBE_RTMPS_BASE}/${STREAM_KEY}"
+    # Network I/O timeout: 15 seconds (in microseconds) for RTMPS network writes
+    OUTPUT_NETWORK_ARGS+=(
+        "-rw_timeout"
+        "15000000"
+    )
     echo "Target:       YouTube Live (RTMPS secure ingest)"
 else
     echo "ERROR: Unknown STREAM_OUTPUT_MODE: ${STREAM_OUTPUT_MODE} (expected 'youtube' or 'file')" >&2
@@ -107,6 +119,7 @@ FFMPEG_CMD=(
     -ar 44100
     -ac 2
     "${EXTRA_ARGS[@]}"
+    "${OUTPUT_NETWORK_ARGS[@]}"
     -f flv
     "${TARGET_URL}"
 )

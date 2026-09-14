@@ -61,6 +61,8 @@ class TestRadioYouTubeStreamAssets(unittest.TestCase):
         self.assertIn("astrazit-radio.service", unit_sec.get("After", ""))
         self.assertIn("network-online.target", unit_sec.get("Wants", ""))
         self.assertIn("astrazit-radio.service", unit_sec.get("Wants", ""))
+        self.assertEqual(unit_sec.get("StartLimitIntervalSec"), "300")
+        self.assertEqual(unit_sec.get("StartLimitBurst"), "5")
 
         # 3. Execution user & paths
         service_sec = parser["Service"]
@@ -672,6 +674,300 @@ check_mounts_isolation() {
                 content = p.read_text(encoding="utf-8", errors="ignore")
                 match = stream_key_regex.search(content)
                 self.assertIsNone(match, f"Forbidden real stream key detected in {p}: {match.group(0) if match else ''}")
+
+
+    def test_harbor_loopback_binding_in_station_liq(self) -> None:
+        """RADIO-004 Area 3: Verify Harbor authoritative loopback binding via settings.harbor.bind_addrs."""
+        station_liq = REPO_ROOT / "apps" / "radio" / "station.liq"
+        self.assertTrue(station_liq.is_file(), f"station.liq missing: {station_liq}")
+        text = station_liq.read_text(encoding="utf-8")
+        # Authoritative loopback setting
+        self.assertIn('settings.harbor.bind_addrs := ["127.0.0.1"]', text)
+        # Ensure unsupported host= per-output syntax is not present
+        self.assertNotIn('host="127.0.0.1"', text)
+        self.assertNotIn("host=", text)
+
+    def test_stream_duration_validation_accepts_non_negative_integers_and_rejects_malformed(self) -> None:
+        """RADIO-004 Area 6: stream.sh rejects negative, decimal, whitespace, and alpha duration fail-closed."""
+        bash = shutil.which("bash") or "C:/Program Files/Git/bin/bash.exe"
+        if not Path(bash).is_file():
+            self.skipTest("bash required for execution tests")
+
+        with tempfile.TemporaryDirectory(prefix="radio_dur_val_") as tmpdir:
+            tmp = Path(tmpdir)
+            assets_dir = tmp / "assets"
+            assets_dir.mkdir(parents=True)
+            fake_loop = assets_dir / "visual_loop.mp4"
+            fake_loop.write_text("fake video content", encoding="utf-8")
+
+            # Valid values: 0, positive integers (e.g. 20)
+            valid_durations = ["0", "20"]
+            for dur in valid_durations:
+                env = os.environ.copy()
+                env["BASE_DIR"] = str(tmp)
+                env["STREAM_OUTPUT_MODE"] = "file"
+                env["STREAM_OUTPUT_FILE"] = str(tmp / "test.flv")
+                env["STREAM_DURATION"] = dur
+
+                # Mock ffmpeg to exit 0 immediately
+                bin_dir = tmp / "bin"
+                bin_dir.mkdir(parents=True, exist_ok=True)
+                mock_ffmpeg = bin_dir / "ffmpeg"
+                mock_ffmpeg.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+                os.chmod(str(mock_ffmpeg), 0o755)
+                env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+
+                res = subprocess.run(
+                    [bash, (REPO_ROOT / "apps" / "radio" / "stream.sh").as_posix()],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                self.assertEqual(res.returncode, 0, f"Expected returncode 0 for valid duration '{dur}': {res.stderr}")
+
+            # Invalid values: negative, decimal, alphabetic, whitespace, empty, shell-like
+            invalid_durations = ["-1", "1.5", "abc", "   ", " 5 ", "", "1;rm -rf", "$(whoami)"]
+            for bad_dur in invalid_durations:
+                env = os.environ.copy()
+                env["BASE_DIR"] = str(tmp)
+                env["STREAM_OUTPUT_MODE"] = "file"
+                env["STREAM_DURATION"] = bad_dur
+
+                res = subprocess.run(
+                    [bash, (REPO_ROOT / "apps" / "radio" / "stream.sh").as_posix()],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                self.assertEqual(res.returncode, 1, f"Expected returncode 1 for invalid duration '{repr(bad_dur)}'")
+                # Statically sanitized error message only
+                self.assertIn("ERROR: STREAM_DURATION must be a non-negative integer.", res.stderr)
+                # Ensure raw bad duration value is NOT echoed anywhere in error output
+                if bad_dur.strip():
+                    self.assertNotIn(bad_dur.strip(), res.stderr)
+
+            # Distinctive canary string test: confirm canary is never reflected in stderr
+            canary_string = "CANARY_INVALID_DURATION_X9Y8Z7"
+            env = os.environ.copy()
+            env["BASE_DIR"] = str(tmp)
+            env["STREAM_OUTPUT_MODE"] = "file"
+            env["STREAM_DURATION"] = canary_string
+
+            res = subprocess.run(
+                [bash, (REPO_ROOT / "apps" / "radio" / "stream.sh").as_posix()],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(res.returncode, 1)
+            self.assertIn("ERROR: STREAM_DURATION must be a non-negative integer.", res.stderr)
+            self.assertNotIn(canary_string, res.stderr)
+            self.assertNotIn(canary_string, res.stdout)
+
+    def test_setup_restarts_radio_service_if_and_only_if_already_active(self) -> None:
+        """RADIO-004 Area 4: setup script restarts astrazit-radio.service if active, never starts stream."""
+        bash = shutil.which("bash") or "C:/Program Files/Git/bin/bash.exe"
+        if not Path(bash).is_file():
+            self.skipTest("bash required for behavioral harness test")
+
+        setup_sh = REPO_ROOT / "scripts" / "linux" / "setup_radio_node.sh"
+        setup_text = setup_sh.read_text(encoding="utf-8")
+
+        for radio_is_active in [True, False]:
+            with tempfile.TemporaryDirectory(prefix="radio_setup_restart_") as tmpdir:
+                tmp = Path(tmpdir)
+                bin_dir = tmp / "bin"
+                bin_dir.mkdir(parents=True)
+                log_file = tmp / "systemctl.log"
+
+                # Intercept systemctl with mock logging script that simulates is-active
+                mock_systemctl = bin_dir / "systemctl"
+                active_code = "0" if radio_is_active else "3"
+                mock_systemctl.write_text(
+                    "#!/usr/bin/env bash\n"
+                    f'printf "SYSTEMCTL_CALL: %s\\n" "$*" >> "{log_file.as_posix()}"\n'
+                    'if [[ "$1" == "is-active" ]]; then\n'
+                    f'    exit {active_code}\n'
+                    'fi\n'
+                    "exit 0\n",
+                    encoding="utf-8",
+                )
+                os.chmod(str(mock_systemctl), 0o755)
+
+                for cmd in ["useradd", "apt-get"]:
+                    mock_cmd = bin_dir / cmd
+                    mock_cmd.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+                    os.chmod(str(mock_cmd), 0o755)
+
+                isolated_base = tmp / "opt_astrazit"
+                isolated_systemd = tmp / "etc_systemd"
+                isolated_systemd.mkdir(parents=True)
+
+                runner_script = tmp / "run_setup.sh"
+                sanitized = setup_text.replace(
+                    'BASE_DIR="/opt/astrazit-radio"',
+                    f'BASE_DIR="{isolated_base.as_posix()}"',
+                ).replace(
+                    '/etc/systemd/system',
+                    isolated_systemd.as_posix(),
+                ).replace(
+                    '[[ "${EUID}" -ne 0 ]]',
+                    '[[ 1 -eq 0 ]]',
+                ).replace(
+                    'check_host_proc_isolation() {',
+                    'check_host_proc_isolation() { return 0; } \nold_check() {',
+                ).replace(
+                    'chown -R astrazit:astrazit',
+                    '# chown',
+                ).replace(
+                    'chown astrazit:astrazit',
+                    '# chown',
+                )
+                runner_script.write_text(sanitized, encoding="utf-8")
+                os.chmod(str(runner_script), 0o755)
+
+                env = os.environ.copy()
+                env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+                env["DEBIAN_FRONTEND"] = "noninteractive"
+
+                res = subprocess.run(
+                    [bash, runner_script.as_posix()],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                self.assertEqual(res.returncode, 0, f"Setup script failed: {res.stderr}")
+
+                log_content = log_file.read_text(encoding="utf-8") if log_file.is_file() else ""
+
+                # Publisher must NEVER be enabled, started, or restarted
+                self.assertNotIn("enable astrazit-stream.service", log_content)
+                self.assertNotIn("start astrazit-stream.service", log_content)
+                self.assertNotIn("restart astrazit-stream.service", log_content)
+
+                # Radio reload/restart expectations
+                self.assertIn("SYSTEMCTL_CALL: daemon-reload", log_content)
+                self.assertIn("SYSTEMCTL_CALL: enable astrazit-radio.service", log_content)
+                if radio_is_active:
+                    self.assertIn("SYSTEMCTL_CALL: restart astrazit-radio.service", log_content)
+                else:
+                    self.assertNotIn("SYSTEMCTL_CALL: restart astrazit-radio.service", log_content)
+
+    def test_publisher_status_observability_script_is_secret_safe(self) -> None:
+        """RADIO-004 Area 7: publisher_status.sh exists and strictly avoids forbidden argv/environment inspection."""
+        status_script = REPO_ROOT / "scripts" / "linux" / "publisher_status.sh"
+        self.assertTrue(status_script.is_file(), f"publisher_status.sh missing: {status_script}")
+
+        raw_bytes = status_script.read_bytes()
+        self.assertNotIn(b"\r\n", raw_bytes, "publisher_status.sh must use Linux LF line endings")
+
+        text = raw_bytes.decode("utf-8")
+        self.assertTrue(text.startswith("#!/usr/bin/env bash"))
+        self.assertIn("set -euo pipefail", text)
+        self.assertIn("set +x", text)
+
+        # Prohibited argv/environment/secret inspection commands
+        forbidden_tokens = ["pgrep -f", "ps aux", "cmdline", "printenv", "STREAM_KEY", "echo $STREAM_KEY"]
+        for token in forbidden_tokens:
+            self.assertNotIn(token, text, f"Forbidden inspection token '{token}' found in publisher_status.sh")
+
+        # Required secret-safe primitives
+        self.assertIn("systemctl is-active", text)
+        self.assertIn("systemctl is-enabled", text)
+        self.assertIn("systemctl show", text)
+        self.assertIn("NRestarts", text)
+        self.assertIn("MainPID", text)
+        self.assertIn("systemctl --failed", text)
+
+    def test_rtmps_timeout_applied_only_to_youtube_mode(self) -> None:
+        """RADIO-004 Area 5: Verify -rw_timeout 15000000 is applied strictly to YouTube mode and absent in file mode."""
+        stream_sh_text = (REPO_ROOT / "apps" / "radio" / "stream.sh").read_text(encoding="utf-8")
+
+        # Static checks: timeout exists and is defined
+        self.assertIn("-rw_timeout", stream_sh_text)
+        self.assertIn("15000000", stream_sh_text)
+        self.assertIn("OUTPUT_NETWORK_ARGS", stream_sh_text)
+
+        # Confirm CBR configuration remains exactly 2500k with x264 HRD filler
+        self.assertIn("-b:v 2500k", stream_sh_text)
+        self.assertIn("-minrate 2500k", stream_sh_text)
+        self.assertIn("-maxrate 2500k", stream_sh_text)
+        self.assertIn("-bufsize 5000k", stream_sh_text)
+        self.assertIn('-x264-params "nal-hrd=cbr:force-cfr=1"', stream_sh_text)
+
+        # Confirm secret suppression and safe error handling remain intact
+        self.assertIn('set +x', stream_sh_text)
+        self.assertIn('>/dev/null 2>&1', stream_sh_text)
+        self.assertIn('ERROR: FFmpeg publisher exited with status', stream_sh_text)
+
+        bash = shutil.which("bash") or "C:/Program Files/Git/bin/bash.exe"
+        if not Path(bash).is_file():
+            self.skipTest("bash required for argument composition test")
+
+        with tempfile.TemporaryDirectory(prefix="radio_timeout_test_") as tmpdir:
+            tmp = Path(tmpdir)
+            assets_dir = tmp / "assets"
+            assets_dir.mkdir(parents=True)
+            fake_loop = assets_dir / "visual_loop.mp4"
+            fake_loop.write_text("fake video", encoding="utf-8")
+
+            # Mock ffmpeg that records all invocation arguments to a file
+            bin_dir = tmp / "bin"
+            bin_dir.mkdir(parents=True)
+            mock_ffmpeg = bin_dir / "ffmpeg"
+            args_log = tmp / "ffmpeg_args.log"
+            mock_ffmpeg.write_text(
+                "#!/usr/bin/env bash\n"
+                f'printf "%s\\n" "$@" > "{args_log.as_posix()}"\n'
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            os.chmod(str(mock_ffmpeg), 0o755)
+
+            env_base = os.environ.copy()
+            env_base["PATH"] = str(bin_dir) + os.pathsep + env_base.get("PATH", "")
+            env_base["BASE_DIR"] = str(tmp)
+
+            # 1. FILE MODE: Verify -rw_timeout is NEVER passed
+            env_file = env_base.copy()
+            env_file["STREAM_OUTPUT_MODE"] = "file"
+            env_file["STREAM_OUTPUT_FILE"] = str(tmp / "out.flv")
+
+            res_file = subprocess.run(
+                [bash, (REPO_ROOT / "apps" / "radio" / "stream.sh").as_posix()],
+                env=env_file,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(res_file.returncode, 0, f"File mode failed: {res_file.stderr}")
+            args_file_text = args_log.read_text(encoding="utf-8") if args_log.is_file() else ""
+            self.assertNotIn("-rw_timeout", args_file_text, "File mode must NOT receive -rw_timeout argument")
+            self.assertNotIn("15000000", args_file_text)
+
+            # 2. YOUTUBE MODE: Verify -rw_timeout 15000000 IS passed before -f flv
+            env_yt = env_base.copy()
+            env_yt["STREAM_OUTPUT_MODE"] = "youtube"
+            env_yt["STREAM_KEY"] = "fake-test-key-for-arg-composition"
+
+            res_yt = subprocess.run(
+                [bash, (REPO_ROOT / "apps" / "radio" / "stream.sh").as_posix()],
+                env=env_yt,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(res_yt.returncode, 0, f"YouTube mode failed: {res_yt.stderr}")
+            args_yt_lines = (args_log.read_text(encoding="utf-8")).splitlines()
+            self.assertIn("-rw_timeout", args_yt_lines, "YouTube mode MUST receive -rw_timeout argument")
+            timeout_idx = args_yt_lines.index("-rw_timeout")
+            self.assertEqual(args_yt_lines[timeout_idx + 1], "15000000", "Timeout value must be 15000000 microseconds")
+            flv_idx = args_yt_lines.index("-f")
+            self.assertLess(timeout_idx, flv_idx, "-rw_timeout must precede output format -f flv")
 
 
 if __name__ == "__main__":

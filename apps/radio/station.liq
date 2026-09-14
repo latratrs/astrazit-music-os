@@ -13,12 +13,16 @@
 # Settings
 settings.server.telnet := false
 settings.log.level := 3
+# Harbor is an internal FFmpeg handoff; never expose it beyond loopback.
+settings.harbor.bind_addrs := ["127.0.0.1"]
 
 # Directory & Log Configuration
 music_dir = environment.get(default="/opt/astrazit-radio/music", "RADIO_MUSIC_DIR")
 log_file = environment.get(default="/opt/astrazit-radio/logs/plays.jsonl", "RADIO_LOG_FILE")
 output_mode = environment.get(default="dummy", "RADIO_OUTPUT_MODE")
 output_file = environment.get(default="/opt/astrazit-radio/state/test_playout.wav", "RADIO_OUTPUT_FILE")
+harbor_port = int_of_string(environment.get(default="8000", "RADIO_HARBOR_PORT"))
+harbor_mount = environment.get(default="radio.wav", "RADIO_HARBOR_MOUNT")
 
 # Station Lifecycle Logging: Start Event
 file.write(data='{"timestamp":"' ^ string_of(time()) ^ '","event":"STATION_START"}\n', append=true, log_file)
@@ -55,8 +59,11 @@ playlist_source.on_track(log_track)
 # Output Sink Selection
 # - "dummy": Default headless playout (real-time decoding without physical audio device)
 # - "file": Decoded audio PCM WAV sink for verification and acceptance testing
+# - "harbor": Local HTTP streaming sink (uncompressed WAV on 127.0.0.1:8000) for FFmpeg video multiplexer
 if output_mode == "file" then
   output.file(%wav, output_file, station)
+elsif output_mode == "harbor" then
+  output.harbor(%wav, port=harbor_port, mount=harbor_mount, station)
 else
   output.dummy(station)
 end

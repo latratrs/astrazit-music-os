@@ -1,0 +1,32 @@
+[Unit]
+Description=AstraZit Music OS Radio YouTube Video Stream Supervisor
+After=network.target network-online.target astrazit-radio.service
+Wants=network-online.target astrazit-radio.service
+Documentation=https://github.com/astrazit/astrazit-music-os
+
+[Service]
+Type=simple
+User=astrazit
+Group=astrazit
+WorkingDirectory=/opt/astrazit-radio
+Environment="STREAM_INPUT_VIDEO=/opt/astrazit-radio/assets/visual_loop.mp4" "STREAM_INPUT_AUDIO=http://127.0.0.1:8000/radio.wav" "STREAM_OUTPUT_MODE=youtube"
+EnvironmentFile=-/opt/astrazit-radio/config/stream.env
+ExecStart=/usr/bin/bash /opt/astrazit-radio/app/stream.sh
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+# Security Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictNamespaces=true
+
+[Install]
+WantedBy=multi-user.target

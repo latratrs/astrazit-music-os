@@ -16,12 +16,20 @@ Activate this skill when:
 - Designing chat interactions or "now playing" comment/chat automations.
 
 ## 3. Constraints
-- **Zero Real Stream Keys in Git**: Stream keys must never be committed to Git. They must be injected via environment variables or secret managers.
-- **Human Gatekeeping (GATE-02 & GATE-09)**: Modifying live public stream settings or publishing public announcements requires human confirmation.
-- **Quota Management**: YouTube Data API v3 quotas must be respected with aggressive caching for track info and status checks.
+- **Zero Real Stream Keys in Git (GATE-09)**: Stream keys must never be committed to Git or logs. They must be injected via runtime environment variables or permissions-restricted configuration files (`/opt/astrazit-radio/config/stream.env`, mode `0600`).
+- **Human Gatekeeping (GATE-02)**: Public stream launches and announcements require human gatekeeping. MVP streaming is strictly private or unlisted.
+- **RTMPS Secure Ingest**: Streaming must target secure RTMPS (`rtmps://a.rtmps.youtube.com/live2`) over TLS (port 443).
 
-## 4. Authoritative References
+## 4. Production Architecture & Runbooks (RADIO-003)
+- Ingest URL: `rtmps://a.rtmps.youtube.com/live2`
+- Stream Key: Loaded at runtime via `$STREAM_KEY`
+- Video: H.264 1280x720 30 fps @ 4000 kbps CBR, 2s keyframe interval (g=60)
+- Audio: AAC stereo 44.1 kHz @ 128 kbps
+- Service Supervisor: `astrazit-stream.service`
+
+## 5. Authoritative References
 - [PROJECT.md](file:///c:/AI-PROJECTS/astrazit-music-os/PROJECT.md)
 - [AGENTS.md - Gates & Security](file:///c:/AI-PROJECTS/astrazit-music-os/AGENTS.md)
-- TODO: YouTube Live Ingest & Metadata Specifications (`docs/radio/youtube-live.md` - to be established)
-- TODO: Broadcast Health Monitor Runbook (to be established)
+- [YouTube Video Stream Architecture](file:///c:/AI-PROJECTS/astrazit-music-os/docs/architecture/YOUTUBE_VIDEO_STREAM.md)
+- [Task RADIO-003](file:///c:/AI-PROJECTS/astrazit-music-os/tasks/RADIO-003.md)
+- [YouTube Verification Protocol](file:///c:/AI-PROJECTS/astrazit-music-os/scripts/linux/verify_youtube_stream.sh)

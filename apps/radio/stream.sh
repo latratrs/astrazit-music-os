@@ -118,23 +118,53 @@ FFMPEG_CMD=(
     -b:a 128k
     -ar 44100
     -ac 2
+    -progress pipe:1
     "${EXTRA_ARGS[@]}"
     "${OUTPUT_NETWORK_ARGS[@]}"
     -f flv
     "${TARGET_URL}"
 )
 
+# Watchdog Supervisor Script Path
+WATCHDOG_SCRIPT="${BASE_DIR}/app/stream_watchdog.py"
+if [[ ! -f "${WATCHDOG_SCRIPT}" ]]; then
+    # Fallback to relative repository location if running in developer tree
+    WATCHDOG_SCRIPT="$(dirname "$0")/stream_watchdog.py"
+fi
+
+# Resolve valid Python interpreter for watchdog supervisor
+PYTHON_BIN=""
+for cand in python3 python; do
+    if command -v "${cand}" >/dev/null 2>&1; then
+        if "${cand}" -c "import sys" >/dev/null 2>&1; then
+            PYTHON_BIN="${cand}"
+            break
+        fi
+    fi
+done
+
+
 if [[ "${STREAM_OUTPUT_MODE}" == "youtube" ]]; then
     # In YouTube/RTMPS mode, raw FFmpeg diagnostics on stderr could leak the stream key
-    # if connection initialization fails. Suppress raw stderr from journal/logs,
-    # capture exit status, and emit a sanitized failure message.
-    set +e
-    "${FFMPEG_CMD[@]}" >/dev/null 2>&1
-    FFMPEG_STATUS=$?
-    set -e
-    if [[ "${FFMPEG_STATUS}" -ne 0 ]]; then
-        echo "ERROR: FFmpeg publisher exited with status ${FFMPEG_STATUS}." >&2
-        exit "${FFMPEG_STATUS}"
+    # if connection initialization fails. The stream_watchdog supervisor redirects
+    # child stderr to /dev/null and reads machine-readable progress from pipe:1,
+    # detecting progress stalls and initiating bounded termination recovery.
+    if [[ -n "${PYTHON_BIN}" && -f "${WATCHDOG_SCRIPT}" ]]; then
+        set +e
+        "${PYTHON_BIN}" "${WATCHDOG_SCRIPT}" "${FFMPEG_CMD[@]}"
+        SUPERVISOR_STATUS=$?
+        set -e
+        if [[ "${SUPERVISOR_STATUS}" -ne 0 ]]; then
+            echo "ERROR: FFmpeg publisher exited with status ${SUPERVISOR_STATUS}." >&2
+            exit "${SUPERVISOR_STATUS}"
+        fi
+    else
+        # GK-P2: Fail-closed requirement in YouTube mode.
+        # If Python or stream_watchdog.py is unavailable, DO NOT fall back to unsupervised FFmpeg.
+        # Exit non-zero with a sanitized diagnostic to avoid repeating the RADIO-006 silent hang defect.
+        echo "ERROR: Supervised YouTube publishing requires Python and ${WATCHDOG_SCRIPT}." >&2
+        echo "ERROR: Watchdog supervisor is unavailable. Failing closed to prevent unsupervised publishing hang." >&2
+        exit 1
     fi
 else
     # In local file mode, no secrets exist; retain standard diagnostics for inspection.

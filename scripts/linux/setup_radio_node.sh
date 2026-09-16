@@ -80,6 +80,18 @@ elif [[ -f "./apps/radio/stream.sh" ]]; then
     chmod 750 "${BASE_DIR}/app/stream.sh"
 fi
 
+WATCHDOG_SRC="$(dirname "$0")/../../apps/radio/stream_watchdog.py"
+if [[ -f "${WATCHDOG_SRC}" ]]; then
+    echo "--> Installing stream_watchdog.py from repo..."
+    cp "${WATCHDOG_SRC}" "${BASE_DIR}/app/stream_watchdog.py"
+    chmod 750 "${BASE_DIR}/app/stream_watchdog.py"
+elif [[ -f "./apps/radio/stream_watchdog.py" ]]; then
+    echo "--> Installing stream_watchdog.py from ./apps/radio/..."
+    cp "./apps/radio/stream_watchdog.py" "${BASE_DIR}/app/stream_watchdog.py"
+    chmod 750 "${BASE_DIR}/app/stream_watchdog.py"
+fi
+
+
 # 7. Generate Visual Loop Asset if missing
 if [[ ! -f "${BASE_DIR}/assets/visual_loop.mp4" ]]; then
     echo "--> Generating visual loop asset under ${BASE_DIR}/assets/visual_loop.mp4..."

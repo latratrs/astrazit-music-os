@@ -969,6 +969,62 @@ check_mounts_isolation() {
             flv_idx = args_yt_lines.index("-f")
             self.assertLess(timeout_idx, flv_idx, "-rw_timeout must precede output format -f flv")
 
+    def test_stream_script_includes_progress_pipe_and_watchdog_supervisor(self) -> None:
+        """RADIO-006A: stream.sh passes -progress pipe:1 and invokes stream_watchdog.py in YouTube mode."""
+        stream_sh_text = (REPO_ROOT / "apps" / "radio" / "stream.sh").read_text(encoding="utf-8")
+        self.assertIn("-progress pipe:1", stream_sh_text)
+        self.assertIn("stream_watchdog.py", stream_sh_text)
+        self.assertIn("WATCHDOG_SCRIPT", stream_sh_text)
+        self.assertIn("PYTHON_BIN", stream_sh_text)
+
+    def test_setup_radio_node_installs_stream_watchdog(self) -> None:
+        """RADIO-006A: setup_radio_node.sh installs stream_watchdog.py alongside stream.sh."""
+        setup_sh_text = (REPO_ROOT / "scripts" / "linux" / "setup_radio_node.sh").read_text(encoding="utf-8")
+        self.assertIn("stream_watchdog.py", setup_sh_text)
+        self.assertIn('chmod 750 "${BASE_DIR}/app/stream_watchdog.py"', setup_sh_text)
+
+    def test_youtube_mode_fails_closed_when_watchdog_or_python_missing(self) -> None:
+        """GK-P2 / RADIO-006A-R1: In YouTube mode, missing watchdog script or Python must fail closed."""
+        stream_sh_text = (REPO_ROOT / "apps" / "radio" / "stream.sh").read_text(encoding="utf-8")
+        self.assertIn("Fail-closed requirement in YouTube mode", stream_sh_text)
+        self.assertIn("Failing closed to prevent unsupervised publishing hang", stream_sh_text)
+
+        bash = shutil.which("bash") or "C:/Program Files/Git/bin/bash.exe"
+        if not Path(bash).is_file():
+            self.skipTest("bash required for fail-closed execution test")
+
+        with tempfile.TemporaryDirectory(prefix="radio_fail_closed_test_") as tmpdir:
+            tmp = Path(tmpdir)
+            assets_dir = tmp / "assets"
+            assets_dir.mkdir(parents=True)
+            fake_loop = assets_dir / "visual_loop.mp4"
+            fake_loop.write_text("fake video", encoding="utf-8")
+
+            # Mock empty bin directory so python/python3 are NOT available
+            bin_dir = tmp / "bin"
+            env_yt = os.environ.copy()
+            # Force empty PATH containing only bash directory so python/python3 are NOT available
+            env_yt["PATH"] = str(Path(bash).parent)
+            env_yt["BASE_DIR"] = str(tmp)
+            env_yt["STREAM_OUTPUT_MODE"] = "youtube"
+            env_yt["STREAM_KEY"] = "xxxx-xxxx-xxxx-xxxx"
+
+            res = subprocess.run(
+                [bash, (REPO_ROOT / "apps" / "radio" / "stream.sh").as_posix()],
+                env=env_yt,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+
+            # Must exit non-zero (1)
+            self.assertNotEqual(res.returncode, 0)
+            self.assertIn("ERROR: Supervised YouTube publishing requires Python", res.stderr)
+            self.assertIn("Failing closed", res.stderr)
+            # Must NOT expose stream key in error output
+            self.assertNotIn("xxxx-xxxx-xxxx-xxxx", res.stderr)
+            self.assertNotIn("xxxx-xxxx-xxxx-xxxx", res.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

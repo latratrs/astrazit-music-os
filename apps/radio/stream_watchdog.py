@@ -28,12 +28,15 @@ import subprocess
 import sys
 import threading
 import time
-from typing import IO, List, Optional
+from typing import IO, List, Optional, Tuple
 
 
 DEFAULT_STALL_THRESHOLD_SEC = 30.0
 DEFAULT_GRACE_PERIOD_SEC = 5.0
 POLL_INTERVAL_SEC = 0.5
+MAX_DRAIN_PER_PASS = 100
+EXIT_LIFECYCLE_ERROR = 1
+EXIT_STALL_TIMEOUT = 124
 
 # Patterns to identify potential secret tokens in strings for safe logging
 SECRET_KEY_PATTERN = re.compile(r"\b[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}(?:-[a-z0-9]{4})?\b")
@@ -136,12 +139,17 @@ class ProcessLifecycleSupervisor:
         self.shutdown_requested = False
         self.shutdown_signal: Optional[int] = None
         self.parser = ProgressParser()
+        self.line_queue: queue.Queue[Optional[Tuple[str, float]]] = queue.Queue()
+        self._last_termination_initiated: bool = True
 
     def handle_signal(self, signum: int, frame: object) -> None:
-        """Signal handler for wrapper termination by systemd."""
+        """Signal handler for wrapper termination by systemd.
+
+        Signal-safety: Performs only minimal Python state recording. No logging or I/O
+        is performed in the signal handler context to prevent reentrancy exceptions.
+        """
         self.shutdown_requested = True
         self.shutdown_signal = signum
-        log_event(f"Termination signal {signum} received by watchdog wrapper; stopping child", level="WARN")
 
     def register_signal_handlers(self) -> None:
         """Register signal handlers for SIGTERM and SIGINT."""
@@ -154,12 +162,19 @@ class ProcessLifecycleSupervisor:
         except (ValueError, AttributeError):
             pass
 
-    def terminate_and_reap_child(self, child: subprocess.Popen, reason: str) -> int:
+    def terminate_and_reap_child(self, child: subprocess.Popen, reason: str) -> Optional[int]:
         """Perform bounded escalation to terminate and reap child process:
 
         SIGTERM -> bounded wait -> SIGKILL -> reap (wait).
-        Returns the child final exit code.
+        Returns the child final exit code (int) if confirmed, or None if unconfirmed.
         """
+        # Re-observe child state immediately adjacent to initiating termination
+        pre_ret = child.poll()
+        if pre_ret is not None:
+            self._last_termination_initiated = False
+            return pre_ret
+
+        self._last_termination_initiated = True
         log_event(f"Termination sequence initiated for child PID {child.pid} (reason: {reason})", level="WARN")
 
         # Step 1: Request graceful termination
@@ -195,14 +210,16 @@ class ProcessLifecycleSupervisor:
             return ret
         except (subprocess.TimeoutExpired, OSError) as e:
             log_event(f"Critical: Failed to reap child PID {child.pid}: {e}", level="ERROR")
-            return -1
+            return None
 
     def run(self) -> int:
         """Run the supervisor loop.
 
         Returns exit code for wrapper:
-        - 0: child exited normally with 0
-        - non-zero: child exited non-zero or was killed due to stall (exit 124)
+        - 0: child exited normally with 0 or terminated cleanly upon confirmed shutdown
+        - child exit code: natural child exit (non-zero or zero) propagates unchanged
+        - 124: child killed due to genuine progress stall timeout
+        - 1: unconfirmed child termination / lifecycle error
         """
         self.register_signal_handlers()
         log_event("Publisher progress watchdog started", level="INFO")
@@ -232,7 +249,6 @@ class ProcessLifecycleSupervisor:
                 except Exception:
                     pass
 
-
         try:
             self.child = subprocess.Popen(
                 actual_cmd,
@@ -253,12 +269,14 @@ class ProcessLifecycleSupervisor:
 
         log_event(f"Publisher child process spawned (PID: {self.child.pid})", level="INFO")
 
-        line_queue: queue.Queue[Optional[str]] = queue.Queue()
+        assert self.child.stdout is not None
+        child_stdout = self.child.stdout
 
         def reader_thread(stream: IO[str]) -> None:
             try:
                 for line in iter(stream.readline, ""):
-                    line_queue.put(line)
+                    receipt_time = time.monotonic()
+                    self.line_queue.put((line, receipt_time))
             except Exception:
                 pass
             finally:
@@ -266,86 +284,160 @@ class ProcessLifecycleSupervisor:
                     stream.close()
                 except Exception:
                     pass
-                line_queue.put(None)
+                self.line_queue.put(None)
 
-        assert self.child.stdout is not None
-        child_stdout = self.child.stdout
         t = threading.Thread(target=reader_thread, args=(child_stdout,), daemon=True)
         t.start()
 
-        def cleanup_reader() -> None:
-            """Ensure child stdout pipe is closed and reader thread is joined with finite timeout."""
-            try:
-                child_stdout.close()
-            except Exception:
-                pass
+        def cleanup_reader(child_terminated: bool = True) -> None:
+            """Ensure child stdout pipe and reader thread are cleaned up in bounded time.
+
+            Bounded cleanup pattern (R5-002):
+            1. First boundedly join/check reader thread WITHOUT cross-thread close.
+            2. If reader thread has exited:
+               Safe stream cleanup may follow.
+            3. If reader thread remains alive:
+               Do NOT cross-thread close the buffered stream.
+               Leave daemon reader alone.
+               Return from supervisor boundedly.
+            """
             t.join(timeout=1.0)
+            if not t.is_alive():
+                try:
+                    child_stdout.close()
+                except Exception:
+                    pass
+
+        def perform_shutdown() -> int:
+            if self.child is None:
+                return 0
+
+            # 1. Immediately adjacent to initiating termination, re-observe child state
+            child_ret = self.child.poll()
+            if child_ret is not None:
+                log_event(f"Publisher child exited with status {child_ret}", level="INFO")
+                cleanup_reader(child_terminated=True)
+                return child_ret
+
+            # 2. Child is still running: establish/commit shutdown termination decision
+            sig_desc = f" {self.shutdown_signal}" if self.shutdown_signal is not None else ""
+            log_event(f"Termination signal{sig_desc} received by watchdog wrapper; stopping child", level="WARN")
+            log_event("Watchdog stopping due to wrapper shutdown request", level="INFO")
+
+            # 3. Immediately adjacent before calling termination helper, re-observe child state
+            child_ret = self.child.poll()
+            if child_ret is not None:
+                log_event(f"Publisher child exited with status {child_ret}", level="INFO")
+                cleanup_reader(child_terminated=True)
+                return child_ret
+
+            reap_ret = self.terminate_and_reap_child(self.child, reason="systemd service shutdown")
+            if not getattr(self, "_last_termination_initiated", True):
+                # Child naturally exited before termination could be initiated
+                if reap_ret is not None:
+                    log_event(f"Publisher child exited with status {reap_ret}", level="INFO")
+                    cleanup_reader(child_terminated=True)
+                    return reap_ret
+
+            confirmed = (reap_ret is not None and self.child.poll() is not None)
+            cleanup_reader(child_terminated=confirmed)
+            if confirmed:
+                return 0
+            log_event("Shutdown incomplete: child process termination/reap could not be confirmed", level="ERROR")
+            return EXIT_LIFECYCLE_ERROR
 
         exit_code = 0
         is_stalled = False
         last_log_time = time.monotonic()
 
         while True:
-            now = time.monotonic()
+            # Boundary 1: Outer supervisory loop boundary
+            # Check natural exit if child has finished and queue is exhausted
+            if self.child is not None and self.line_queue.empty():
+                child_ret = self.child.poll()
+                if child_ret is not None:
+                    log_event(f"Publisher child exited with status {child_ret}", level="INFO")
+                    cleanup_reader(child_terminated=True)
+                    return child_ret
 
+            # Shutdown decision boundary at outer loop
             if self.shutdown_requested:
-                log_event("Watchdog stopping due to wrapper shutdown request", level="INFO")
-                self.terminate_and_reap_child(self.child, reason="systemd service shutdown")
-                cleanup_reader()
-                return 0
+                return perform_shutdown()
 
-            # Drain available progress lines
-            while True:
+            # Drain available progress lines with bounded work per supervisory pass
+            drain_count = 0
+            while drain_count < MAX_DRAIN_PER_PASS:
+                # Boundary 2: Queue-drain shutdown boundary
+                if self.shutdown_requested:
+                    return perform_shutdown()
+
                 try:
-                    line = line_queue.get_nowait()
+                    item = self.line_queue.get_nowait()
                 except queue.Empty:
                     break
 
-                if line is None:
+                if item is None:
                     break
 
-                advanced = self.parser.process_line(line, now=now)
+                line, receipt_time = item
+                drain_count += 1
+                # Progress advancement timing must represent when progress was actually received
+                advanced = self.parser.process_line(line, now=receipt_time)
                 if advanced:
-                    if now - last_log_time >= 60.0:
+                    if receipt_time - last_log_time >= 60.0:
                         log_event(f"Progress healthy (out_time_us={self.parser.last_out_time_us})", level="INFO")
-                        last_log_time = now
+                        last_log_time = receipt_time
 
-            # DS-P0 CHILD EXIT PRECEDENCE:
-            # Check whether child has exited before evaluating progress stall timeout.
-            # If child has exited, reap it and return its actual exit code.
-            # Do NOT synthesize 124 timeout merely because progress=end was absent.
-            child_ret = self.child.poll()
-            if child_ret is not None:
-                log_event(f"Publisher child exited with status {child_ret}", level="INFO")
-                cleanup_reader()
-                return child_ret
+            # Check whether child has exited before evaluating progress stall timeout
+            if self.child is not None:
+                child_ret = self.child.poll()
+                if child_ret is not None:
+                    log_event(f"Publisher child exited with status {child_ret}", level="INFO")
+                    cleanup_reader(child_terminated=True)
+                    return child_ret
 
+            now = time.monotonic()
             time_since_advance = self.parser.time_since_advance(now=now)
             if time_since_advance >= self.stall_threshold_sec:
-                # Double-check process exit immediately at stall deadline before declaring stall
-                child_ret_recheck = self.child.poll()
-                if child_ret_recheck is not None:
-                    log_event(f"Publisher child exited with status {child_ret_recheck} at stall threshold", level="INFO")
-                    cleanup_reader()
-                    return child_ret_recheck
+                # FINAL STALL DECISION BOUNDARY (R5-001):
+                # 1. Observe child state: recheck natural child exit
+                if self.child is not None:
+                    child_ret = self.child.poll()
+                    if child_ret is not None:
+                        log_event(f"Publisher child exited with status {child_ret} at stall threshold", level="INFO")
+                        cleanup_reader(child_terminated=True)
+                        return child_ret
 
+                # 2. Observe shutdown state: recheck shutdown
+                if self.shutdown_requested:
+                    return perform_shutdown()
+
+                # 3. If child running and no shutdown is recorded:
+                # COMMIT STALL IMMEDIATELY (explicit adjacent commitment)
+                is_stalled = True
+
+                # 4. ONLY AFTER COMMITMENT perform logging and recovery actions
                 log_event(
                     f"Publisher stalled! No progress advancement for {time_since_advance:.1f}s "
                     f"(threshold: {self.stall_threshold_sec:.1f}s, last out_time_us: {self.parser.last_out_time_us})",
                     level="ERROR",
                 )
-                is_stalled = True
                 break
 
             time.sleep(POLL_INTERVAL_SEC)
 
         if is_stalled and self.child is not None:
-            self.terminate_and_reap_child(self.child, reason="progress stall watchdog timeout")
-            cleanup_reader()
-            log_event("Watchdog exiting with status 124 for systemd recovery", level="WARN")
-            return 124
+            # Genuine stall recovery committed (R5-002 B, R7-001)
+            reap_ret = self.terminate_and_reap_child(self.child, reason="progress stall watchdog timeout")
+            confirmed = (reap_ret is not None and self.child.poll() is not None)
+            cleanup_reader(child_terminated=confirmed)
+            if confirmed:
+                log_event("Watchdog exiting with status 124 for systemd recovery", level="WARN")
+                return EXIT_STALL_TIMEOUT
+            log_event("Stall recovery incomplete: child process termination/reap could not be confirmed", level="ERROR")
+            return EXIT_LIFECYCLE_ERROR
 
-        cleanup_reader()
+        cleanup_reader(child_terminated=True)
         return exit_code
 
 

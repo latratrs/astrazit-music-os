@@ -83,6 +83,9 @@ test-results/
 .ruff_cache/
 .mypy_cache/
 
+# Ephemeral multi-model review runs (OS-009)
+/reports/reviews/
+
 # Node.js / Web
 node_modules/
 npm-debug.log*

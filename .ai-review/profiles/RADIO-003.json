@@ -1,0 +1,76 @@
+{
+  "ticket": "RADIO-003",
+  "risk_tier": "T3",
+  "review_packet": "reports/RADIO-003-review-packet.md",
+  "max_payload_bytes": 131072,
+  "max_output_tokens": 4000,
+  "specialists": {
+    "claude": {
+      "name": "claude",
+      "model": "anthropic/claude-sonnet-5",
+      "role": "docs/spec/acceptance/security-claim consistency auditor",
+      "max_output_tokens": 8000,
+      "request_options": {
+        "omit_temperature": true,
+        "reasoning": {
+          "max_tokens": 3000
+        }
+      },
+      "allowlist": [
+        "reports/RADIO-003-review-packet.md",
+        ".ai-review/REVIEW_PROTOCOL.md",
+        "docs/architecture/YOUTUBE_VIDEO_STREAM.md",
+        "tasks/RADIO-003.md",
+        ".agents/skills/ffmpeg-streaming/SKILL.md",
+        ".agents/skills/youtube-live/SKILL.md",
+        ".gitignore",
+        "apps/radio/systemd/astrazit-stream.service",
+        "apps/radio/systemd/astrazit-radio.service.d/20-harbor.conf"
+      ],
+      "prompt": "You are Claude Sonnet 5 acting as the Documentation, Specification, and Acceptance Criteria consistency reviewer for AstraZit Music OS ticket RADIO-003.\n\nReview the provided files against the review packet and architecture docs.\nFocus on:\n1. Invariant consistency between docs and code (e.g. Harbor loopback, FFmpeg CBR, audio formats).\n2. Acceptance criteria accuracy (distinguish automated Stage-A vs pending external human gates).\n3. Stale or inaccurate claims.\n4. Trust boundary accuracy.\n\nIMPORTANT ACCEPTED LIMITATION:\nRoot and the trusted astrazit service account may be capable of seeing RTMPS target material in process argv/memory. This is an explicitly accepted MVP trust-boundary limitation. Do NOT classify that accepted limitation itself as a failure or blocker.\n\nYou must return a valid JSON object strictly matching the required schema:\n{\n  \"verdict\": \"PASS | CORRECTION REQUIRED | FAIL\",\n  \"findings\": [\n    {\n      \"severity\": \"P0 | P1 | P2 | P3\",\n      \"file\": \"relative/path\",\n      \"line\": 123,\n      \"failure_mode\": \"Description of failure\",\n      \"smallest_correction\": \"Smallest targeted fix\"\n    }\n  ],\n  \"evidence\": [\"concrete facts/snippets\"],\n  \"files_reviewed\": [\"relative/path1\"],\n  \"tests_checks\": [\"inspections conducted\"],\n  \"risks\": [\"remaining concerns\"],\n  \"next_gate\": \"CHATGPT TRIAGE\"\n}\nMaximum 5 findings unless additional P0 blockers exist."
+    },
+    "deepseek": {
+      "name": "deepseek",
+      "model": "deepseek/deepseek-v4-pro",
+      "role": "code/Bash/subprocess/test correctness reviewer",
+      "request_options": {
+        "reasoning": {
+          "effort": "none"
+        }
+      },
+      "allowlist": [
+        "reports/RADIO-003-review-packet.md",
+        ".ai-review/REVIEW_PROTOCOL.md",
+        "apps/radio/stream.sh",
+        "apps/radio/station.liq",
+        "apps/radio/systemd/astrazit-radio.service.d/20-harbor.conf",
+        "apps/radio/systemd/astrazit-stream.service",
+        "scripts/linux/setup_radio_node.sh",
+        "scripts/linux/verify_youtube_stream.sh",
+        "scripts/linux/generate_visual_loop.sh",
+        "tests/test_radio_youtube_stream.py"
+      ],
+      "prompt": "You are DeepSeek V4 Pro acting as the Code, Bash, Subprocess, and Test Correctness reviewer for AstraZit Music OS ticket RADIO-003.\n\nReview the provided files focusing on:\n1. Bash scripting correctness, quote safety, variable precedence, error trapping (set -euo pipefail, set +x).\n2. FFmpeg failure handling and stderr suppression in YouTube mode (zero secret leakage).\n3. Host /proc isolation check logic in setup_radio_node.sh.\n4. Unit test coverage and edge cases in test_radio_youtube_stream.py.\n\nIMPORTANT ACCEPTED LIMITATION:\nRoot and the trusted astrazit service account may be capable of seeing RTMPS target material in process argv/memory. This is an explicitly accepted MVP trust-boundary limitation. Do NOT classify that accepted limitation itself as a failure or blocker.\n\nYou must return a valid JSON object strictly matching the required schema:\n{\n  \"verdict\": \"PASS | CORRECTION REQUIRED | FAIL\",\n  \"findings\": [\n    {\n      \"severity\": \"P0 | P1 | P2 | P3\",\n      \"file\": \"relative/path\",\n      \"line\": 123,\n      \"failure_mode\": \"Description of failure\",\n      \"smallest_correction\": \"Smallest targeted fix\"\n    }\n  ],\n  \"evidence\": [\"concrete facts/snippets\"],\n  \"files_reviewed\": [\"relative/path1\"],\n  \"tests_checks\": [\"inspections conducted\"],\n  \"risks\": [\"remaining concerns\"],\n  \"next_gate\": \"CHATGPT TRIAGE\"\n}\nMaximum 5 findings unless additional P0 blockers exist."
+    },
+    "grok": {
+      "name": "grok",
+      "model": "x-ai/grok-4.6",
+      "role": "adversarial operational reviewer",
+      "request_options": {},
+      "allowlist": [
+        "reports/RADIO-003-review-packet.md",
+        ".ai-review/REVIEW_PROTOCOL.md",
+        "docs/architecture/YOUTUBE_VIDEO_STREAM.md",
+        "tasks/RADIO-003.md",
+        "apps/radio/stream.sh",
+        "apps/radio/station.liq",
+        "apps/radio/systemd/astrazit-radio.service.d/20-harbor.conf",
+        "apps/radio/systemd/astrazit-stream.service",
+        "scripts/linux/setup_radio_node.sh",
+        "scripts/linux/verify_youtube_stream.sh",
+        "scripts/linux/generate_visual_loop.sh"
+      ],
+      "prompt": "You are Grok 4.6 acting as the Adversarial Operational Reviewer for AstraZit Music OS ticket RADIO-003.\n\nReview the provided files focusing on:\n1. Operational failure modes (e.g. systemd crash loop, SIGPIPE, partial host setup, transient network disconnect).\n2. Security and configuration blindspots (e.g. unintended live egress, unmasked environment variables, stream.env overwrites).\n3. Harbor external exposure or network interface binding issues.\n\nIMPORTANT ACCEPTED LIMITATION:\nRoot and the trusted astrazit service account may be capable of seeing RTMPS target material in process argv/memory. This is an explicitly accepted MVP trust-boundary limitation. Do NOT classify that accepted limitation itself as a failure or blocker.\n\nYou must return a valid JSON object strictly matching the required schema:\n{\n  \"verdict\": \"PASS | CORRECTION REQUIRED | FAIL\",\n  \"findings\": [\n    {\n      \"severity\": \"P0 | P1 | P2 | P3\",\n      \"file\": \"relative/path\",\n      \"line\": 123,\n      \"failure_mode\": \"Description of failure\",\n      \"smallest_correction\": \"Smallest targeted fix\"\n    }\n  ],\n  \"evidence\": [\"concrete facts/snippets\"],\n  \"files_reviewed\": [\"relative/path1\"],\n  \"tests_checks\": [\"inspections conducted\"],\n  \"risks\": [\"remaining concerns\"],\n  \"next_gate\": \"CHATGPT TRIAGE\"\n}\nMaximum 5 findings unless additional P0 blockers exist."
+    }
+  }
+}

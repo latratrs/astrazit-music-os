@@ -1,0 +1,43 @@
+{
+  "ticket": "RADIO-006A",
+  "risk_tier": "T2",
+  "review_packet": "reports/RADIO-006A-review-packet.md",
+  "max_payload_bytes": 131072,
+  "max_output_tokens": 4000,
+  "specialists": {
+    "deepseek": {
+      "name": "deepseek",
+      "model": "deepseek/deepseek-v4-pro",
+      "role": "implementation/process lifecycle/security reviewer (Reviewer 1)",
+      "request_options": {
+        "reasoning": {
+          "effort": "none"
+        }
+      },
+      "allowlist": [
+        "apps/radio/stream_watchdog.py",
+        "apps/radio/stream.sh",
+        "tests/test_stream_watchdog.py",
+        "scripts/linux/setup_radio_node.sh",
+        "apps/radio/systemd/astrazit-stream.service"
+      ],
+      "prompt": "You are Reviewer 1 (implementation, process lifecycle, and security specialist) re-reviewing AstraZit Music OS ticket RADIO-006A (FFmpeg Progress Watchdog & Hang Recovery Wrapper) after review reconciliation.\n\nOriginal review findings to verify reconciliation:\n- DS-P0: Child exit precedence over stall classification. Verified: Child exit is checked before stall timeout on every loop iteration, child is reaped, actual exit code is returned (not synthetic 124), and exit 0 or non-zero without progress=end returns actual child code.\n- DS-P1-A: Popen failure reaping. Verified: Popen OSError handling explicitly checks if child was created and waits/reaps it, returning non-zero.\n- DS-P1-B: Progress reader thread termination. Verified: Reader pipe endpoint is closed and thread joined with finite 1.0s timeout on all supervisor exit paths.\n- DS-P2-A: Trust boundary / argv documentation. Verified: Module docstring documents trust boundary, acknowledging root and astrazit user /proc inspection without claiming ProtectProc/hidepid protects against root/self.\n- DS-P2-B: progress=end semantics. Process state remains authoritative; progress=end does not falsely reset stall timer or misclassify exited processes.\n\nReview the provided reconciled files against the failure contract:\n1. Child exit precedence: Is child exit strictly checked and prioritized over stall timeout? Does exit without progress=end preserve actual child status?\n2. Process lifecycle: Does the supervisor properly own the child lifecycle? (SIGTERM -> bounded grace period -> SIGKILL -> reap child -> exit 124/non-zero)\n3. Clean shutdown: Does SIGTERM/SIGINT to the wrapper terminate and reap the child, and join reader thread within bounded timeout?\n4. Are there any zombie or orphan child process possibilities?\n5. Secret safety: Are stream keys, full RTMPS URLs, complete argv, and environment variables strictly protected and never logged?\n6. Documented trust boundary: Root and the same astrazit user can inspect /proc/<pid>/cmdline. Does the design document and respect this without claiming to eliminate it?\n\nYou must return a valid JSON object strictly matching the required schema:\n{\n  \"verdict\": \"PASS | CORRECTION REQUIRED | FAIL\",\n  \"findings\": [\n    {\n      \"severity\": \"P0 | P1 | P2 | P3\",\n      \"file\": \"relative/path\",\n      \"line\": 123,\n      \"failure_mode\": \"Description of failure\",\n      \"smallest_correction\": \"Smallest targeted fix\"\n    }\n  ],\n  \"evidence\": [\"concrete facts/snippets\"],\n  \"files_reviewed\": [\"relative/path1\"],\n  \"tests_checks\": [\"inspections conducted\"],\n  \"risks\": [\"remaining concerns\"],\n  \"next_gate\": \"CHATGPT TRIAGE\"\n}\nMaximum 5 findings unless additional P0 blockers exist."
+    },
+    "grok": {
+      "name": "grok",
+      "model": "x-ai/grok-4.6",
+      "role": "FFmpeg/systemd/watchdog semantics reviewer (Reviewer 2)",
+      "max_output_tokens": 4000,
+      "request_options": {},
+      "allowlist": [
+        "apps/radio/stream_watchdog.py",
+        "apps/radio/stream.sh",
+        "apps/radio/systemd/astrazit-stream.service",
+        "tests/test_stream_watchdog.py",
+        "tests/test_radio_youtube_stream.py"
+      ],
+      "prompt": "You are Reviewer 2 (FFmpeg, systemd, and watchdog semantics specialist) re-reviewing AstraZit Music OS ticket RADIO-006A (FFmpeg Progress Watchdog & Hang Recovery Wrapper) after review reconciliation.\n\nOriginal review findings to verify reconciliation:\n- GK-P2: In YouTube mode, missing watchdog supervisor or Python must fail closed (exit non-zero with sanitized diagnostic) rather than falling back to unsupervised FFmpeg.\n\nReview the provided reconciled files against systemd and FFmpeg streaming requirements:\n1. Machine-readable progress channel: Is FFmpeg -progress pipe:1 used cleanly?\n2. Progress field: Is monotonic advancement of out_time_us required?\n3. Conservative threshold: Is 30s default threshold enforced and configurable?\n4. Systemd semantics: Does the wrapper exit non-zero on progress stall to allow systemd Restart=always (with RestartSec=5s, StartLimitBurst=5, StartLimitIntervalSec=300) to recycle the service?\n5. Fail-closed behavior: In YouTube mode, if stream_watchdog.py or Python is missing, does stream.sh fail closed without launching unsupervised FFmpeg?\n6. Unit file integrity: Confirm astrazit-stream.service preserves hardening (ProtectSystem=full, ProtectHome=true, PrivateTmp=true, ProtectProc=invisible, ProcSubset=pid) and does NOT add WatchdogSec= inappropriately.\n7. Timeout flag investigation: Keep -rw_timeout 15000000 as defense-in-depth.\n\nYou must return a valid JSON object strictly matching the required schema:\n{\n  \"verdict\": \"PASS | CORRECTION REQUIRED | FAIL\",\n  \"findings\": [\n    {\n      \"severity\": \"P0 | P1 | P2 | P3\",\n      \"file\": \"relative/path\",\n      \"line\": 123,\n      \"failure_mode\": \"Description of failure\",\n      \"smallest_correction\": \"Smallest targeted fix\"\n    }\n  ],\n  \"evidence\": [\"concrete facts/snippets\"],\n  \"files_reviewed\": [\"relative/path1\"],\n  \"tests_checks\": [\"inspections conducted\"],\n  \"risks\": [\"remaining concerns\"],\n  \"next_gate\": \"CHATGPT TRIAGE\"\n}\nMaximum 5 findings unless additional P0 blockers exist."
+    }
+
+  }
+}

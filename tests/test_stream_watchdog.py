@@ -968,6 +968,7 @@ class TestWatchdogProcessLifecycle(unittest.TestCase):
                 return orig_close()
 
             orig_stdout.close = guarded_close  # type: ignore[assignment]
+            orig_stdout._orig_close = orig_close  # type: ignore[attr-defined]
             return proc
 
         # Create an unstarted daemon thread so supervisor.run() starts it
@@ -982,6 +983,10 @@ class TestWatchdogProcessLifecycle(unittest.TestCase):
         finally:
             block_event.set()
             blocked_thread.join(timeout=1.0)
+            if supervisor.child and supervisor.child.stdout:
+                if hasattr(supervisor.child.stdout, "_orig_close"):
+                    supervisor.child.stdout.close = supervisor.child.stdout._orig_close  # type: ignore[assignment]
+                supervisor.child.stdout.close()
 
         elapsed = time.monotonic() - start_time
 

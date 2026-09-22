@@ -819,8 +819,6 @@ class TestWatchdogProcessLifecycle(unittest.TestCase):
             "sys.exit(0)\n"
         )
         cmd = [sys.executable, "-c", script]
-        # Stall threshold is 2.0s
-        supervisor = ProcessLifecycleSupervisor(cmd, stall_threshold_sec=2.0, grace_period_sec=0.5)
 
         # We simulate time advancing by 0.5s for each processed progress line.
         # Over 10 lines, total simulated time advances by 5.0 seconds (> 2.0s stall threshold).
@@ -833,16 +831,19 @@ class TestWatchdogProcessLifecycle(unittest.TestCase):
             nonlocal simulated_time
             return simulated_time
 
-        orig_process_line = supervisor.parser.process_line
-
-        def hook_process_line(line: str, now: float | None = None) -> bool:
-            nonlocal simulated_time
-            simulated_time += 0.5
-            return orig_process_line(line, now=mocked_monotonic())
-
-        supervisor.parser.process_line = hook_process_line  # type: ignore[assignment]
-
         with patch("time.monotonic", side_effect=mocked_monotonic):
+            # Stall threshold is 2.0s; constructed inside mock context so last_advance_time shares synthetic domain
+            supervisor = ProcessLifecycleSupervisor(cmd, stall_threshold_sec=2.0, grace_period_sec=0.5)
+            self.assertEqual(supervisor.parser.last_advance_time, 1000.0)
+
+            orig_process_line = supervisor.parser.process_line
+
+            def hook_process_line(line: str, now: float | None = None) -> bool:
+                nonlocal simulated_time
+                simulated_time += 0.5
+                return orig_process_line(line, now=mocked_monotonic())
+
+            supervisor.parser.process_line = hook_process_line  # type: ignore[assignment]
             ret = supervisor.run()
 
         # Must return 0 (child's natural exit), NOT 124

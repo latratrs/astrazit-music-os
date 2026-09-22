@@ -25,8 +25,26 @@ jobs:
       - name: Create logs directory
         run: mkdir -p test-logs
 
-      - name: Print environment and toolchain versions
+      - name: Ensure FFmpeg is installed
+        shell: bash
         run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            echo "FFmpeg not found in PATH. Installing minimum ffmpeg package..."
+            sudo apt-get update -y
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            echo "ERROR: FFmpeg remains unavailable after installation attempt."
+            exit 1
+          fi
+          echo "FFmpeg verified successfully:"
+          ffmpeg -version | head -n 1
+
+      - name: Print environment and toolchain versions
+        shell: bash
+        run: |
+          set -euo pipefail
           {
             echo "=== SYSTEM / ENVIRONMENT ==="
             uname -a

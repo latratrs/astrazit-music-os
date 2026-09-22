@@ -20,6 +20,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -1006,17 +1007,66 @@ check_mounts_isolation() {
             fake_loop = assets_dir / "visual_loop.mp4"
             fake_loop.write_text("fake video", encoding="utf-8")
 
-            # Mock empty bin directory so python/python3 are NOT available
+            # Create isolated bin directory containing bash (and dirname) but NO python/python3
             bin_dir = tmp / "bin"
+            bin_dir.mkdir(parents=True, exist_ok=True)
+
+            if sys.platform == "win32":
+                isolated_bash = bin_dir / "bash.cmd"
+                isolated_bash.write_text(f'@"{bash}" %*\n', encoding="utf-8")
+            else:
+                isolated_bash = bin_dir / "bash"
+                isolated_bash.symlink_to(bash)
+
+            dirname_bin = shutil.which("dirname") or (
+                "/usr/bin/dirname" if Path("/usr/bin/dirname").is_file() else None
+            )
+            if dirname_bin and Path(dirname_bin).is_file():
+                if sys.platform == "win32":
+                    (bin_dir / "dirname.cmd").write_text(f'@"{dirname_bin}" %*\n', encoding="utf-8")
+                else:
+                    (bin_dir / "dirname").symlink_to(dirname_bin)
+
             env_yt = os.environ.copy()
-            # Force empty PATH containing only bash directory so python/python3 are NOT available
-            env_yt["PATH"] = str(Path(bash).parent)
+            env_yt["PATH"] = str(bin_dir)
             env_yt["BASE_DIR"] = str(tmp)
             env_yt["STREAM_OUTPUT_MODE"] = "youtube"
             env_yt["STREAM_KEY"] = "xxxx-xxxx-xxxx-xxxx"
 
+            # Verify precondition: bash is discoverable, but python and python3 are unavailable
+            self.assertIsNotNone(
+                shutil.which("bash", path=str(bin_dir)),
+                "Precondition failed: bash must be discoverable in isolated PATH",
+            )
+            self.assertIsNone(
+                shutil.which("python", path=str(bin_dir)),
+                "Precondition failed: python must be unavailable in isolated PATH",
+            )
+            self.assertIsNone(
+                shutil.which("python3", path=str(bin_dir)),
+                "Precondition failed: python3 must be unavailable in isolated PATH",
+            )
+
+            check_env = subprocess.run(
+                [str(isolated_bash), "-c", "command -v python || command -v python3 || true"],
+                env=env_yt,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            self.assertEqual(
+                check_env.returncode,
+                0,
+                f"Precondition check command failed: {check_env.stderr}",
+            )
+            self.assertEqual(
+                check_env.stdout.strip(),
+                "",
+                f"Precondition failed: python or python3 discovered in isolated PATH: {check_env.stdout.strip()}",
+            )
+
             res = subprocess.run(
-                [bash, (REPO_ROOT / "apps" / "radio" / "stream.sh").as_posix()],
+                [str(isolated_bash), (REPO_ROOT / "apps" / "radio" / "stream.sh").as_posix()],
                 env=env_yt,
                 capture_output=True,
                 text=True,

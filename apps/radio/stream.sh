@@ -98,6 +98,7 @@ FFMPEG_CMD=(
     -reconnect_at_eof 1
     -reconnect_streamed 1
     -reconnect_delay_max 2
+    -ignore_length 1
     -i "${STREAM_INPUT_AUDIO}"
     -map 0:v:0
     -map 1:a:0

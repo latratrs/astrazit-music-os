@@ -1,0 +1,73 @@
+name: RADIO-006C Linux Regression
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - review/radio-006c-linux-gate
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    name: Native Linux Regression
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create logs directory
+        run: mkdir -p test-logs
+
+      - name: Print environment and toolchain versions
+        run: |
+          {
+            echo "=== SYSTEM / ENVIRONMENT ==="
+            uname -a
+            cat /etc/os-release
+            python --version
+            bash --version
+            ffmpeg -version | head -n 1
+          } | tee test-logs/environment.txt
+
+      - name: Run WAV Streaming Suite (test_radio_wav_streaming.py)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest tests/test_radio_wav_streaming.py -v 2>&1 | tee test-logs/wav_streaming.log
+
+      - name: Run Watchdog Suite (test_stream_watchdog.py)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest tests/test_stream_watchdog.py -v 2>&1 | tee test-logs/stream_watchdog.log
+
+      - name: Run Publisher Suite (test_radio_youtube_stream.py)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest tests/test_radio_youtube_stream.py -v 2>&1 | tee test-logs/youtube_stream.log
+
+      - name: Run Combined Regression Suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest \
+            tests/test_radio_wav_streaming.py \
+            tests/test_stream_watchdog.py \
+            tests/test_radio_youtube_stream.py \
+            -v 2>&1 | tee test-logs/combined.log
+
+      - name: Upload Linux Regression Evidence Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-regression-evidence
+          path: test-logs/
+          retention-days: 7

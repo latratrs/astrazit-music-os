@@ -168,11 +168,17 @@ class TestRadioYouTubeStreamAssets(unittest.TestCase):
         self.assertIn("-ar 44100", text)
         self.assertIn("-ac 2", text)
 
-        # 5. Visual looping & Audio reconnect resilience
+        # 5. Visual looping, audio reconnect resilience, and infinite WAV streaming (RADIO-006C)
         self.assertIn("-stream_loop -1", text)
         self.assertIn("-reconnect 1", text)
         self.assertIn("-reconnect_at_eof 1", text)
         self.assertIn("-reconnect_streamed 1", text)
+        self.assertIn("-reconnect_delay_max 2", text)
+        self.assertIn("-ignore_length 1", text)
+        # Invariant: -ignore_length 1 must strictly precede audio input -i
+        ignore_len_idx = text.index("-ignore_length 1")
+        audio_in_idx = text.index('-i "${STREAM_INPUT_AUDIO}"')
+        self.assertLess(ignore_len_idx, audio_in_idx, "-ignore_length 1 must precede audio input -i")
 
         # 6. YouTube Live RTMPS destination
         self.assertIn("rtmps://a.rtmps.youtube.com/live2", text)

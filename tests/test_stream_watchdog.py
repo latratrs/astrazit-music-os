@@ -450,7 +450,7 @@ class TestWatchdogProcessLifecycle(unittest.TestCase):
                             "-c",
                             child_script,
                         ],
-                        stdout=subprocess.PIPE,
+                        stdout=subprocess.DEVNULL,
                         stderr=stderr_file,
                         text=True,
                         preexec_fn=lambda: os.setpgid(0, anchor_pgid),
